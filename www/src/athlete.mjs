@@ -3,6 +3,7 @@ import { friendlyAuthError, getAuthorizedSession, logout } from "./auth.mjs";
 import { watchAthleteNutrition } from "./nutrition-athlete.mjs";
 import { toAthleteProgram } from "./workout-metrics.mjs?v=20261113-program-v6";
 import { markChatRead } from "./chat.mjs";
+import { openAccountMenu, otherSavedAccounts, rememberAccount } from "./account-switch.mjs";
 import { createNotifications } from "./notifications.mjs";
 const api = window.lippolisAthleteApi;
 const badge = document.getElementById("syncBadge");
@@ -208,6 +209,14 @@ async function bootstrap(session) {
   sessionStorage.setItem(markerKey, marker);
   if (!sameSnapshot(merged, remote)) pendingSnapshot = mergeQueuedSnapshot(remote, merged);
 
+  // «Cambia account»: il tasto compare solo se su questo dispositivo c'è un altro account salvato.
+  rememberAccount(profile, user).then(() => {
+    const button = document.getElementById("accountSwitch");
+    if (!button) return;
+    button.hidden = !otherSavedAccounts(user.uid).length;
+    button.onclick = () => openAccountMenu({ currentUid: user.uid, beforeLeave: () => syncBeforeLeave(user.uid, "cambiare account") });
+  }).catch(() => {});
+
   window.lippolisAccount = {
     // Lo snapshot è già salvato localmente; il logout non deve attendere la rete.
     logout: () => logoutAfterSync(user.uid),
@@ -391,19 +400,24 @@ async function flush(uid) {
   }
 }
 
-async function logoutAfterSync(uid) {
+// Prima di uscire o cambiare account: i dati della sessione devono essere arrivati online.
+async function syncBeforeLeave(uid, verbo = "uscire") {
   api.flushPendingSave?.();
   for (let attempt = 0; (pendingSnapshot || saving) && attempt < 3; attempt++) {
     if (!saving) await flush(uid);
     if (pendingSnapshot || saving) await new Promise((resolve) => setTimeout(resolve, 500));
   }
   if (pendingSnapshot || saving) {
-    badgeText("Dati ancora in attesa: riconnettiti e riprova a uscire", true);
-    alert("Non riesco a sincronizzare le ultime modifiche. Restano salvate su questo dispositivo: riconnettiti e riprova a uscire.");
+    badgeText(`Dati ancora in attesa: riconnettiti e riprova a ${verbo}`, true);
+    alert(`Non riesco a sincronizzare le ultime modifiche. Restano salvate su questo dispositivo: riconnettiti e riprova a ${verbo}.`);
     return false;
   }
   stopNutritionWatch?.();
   coachSectionsWatch?.stop();
+  return true;
+}
+async function logoutAfterSync(uid) {
+  if (!(await syncBeforeLeave(uid))) return false;
   await logout(); return true;
 }
 

@@ -1,5 +1,6 @@
 import { adminCall, missingSupabaseKeys, normalizeUser, supabase, supabaseConfigured } from "./supabase.mjs";
 import { destinationFor, friendlyAuthError, loadProfile, profileBlockReason } from "./auth.mjs";
+import { savedAccounts, switchToAccount } from "./account-switch.mjs";
 
 const $ = (id) => document.getElementById(id);
 const message = $("message");
@@ -75,3 +76,28 @@ if (supabaseConfigured) {
     if (session?.user) setTimeout(() => routeUser(session.user).catch((error) => showMessage(friendlyAuthError(error), true)), 0);
   });
 }
+
+// Account già salvati su questo dispositivo (Cambia account): si riaprono con un tocco.
+function paintSavedAccounts() {
+  const host = $("savedAccounts"); if (!host || !supabaseConfigured) return;
+  const accounts = savedAccounts(); host.hidden = !accounts.length; if (!accounts.length) return;
+  if (new URLSearchParams(location.search).has("altro-account")) $("loginBox").querySelector(".lead").textContent = "Entra con l’altro account: resterà salvato su questo dispositivo e potrai passare dall’uno all’altro con «Cambia account».";
+  const head = document.createElement("div"); head.className = "sa-h"; head.textContent = "Account salvati su questo dispositivo";
+  const or = document.createElement("div"); or.className = "sa-or"; or.textContent = "oppure accedi con un altro account";
+  host.replaceChildren(head);
+  for (const account of accounts) {
+    const row = document.createElement("button"); row.type = "button"; row.className = "sa-row";
+    row.innerHTML = '<span class="sa-av"></span><span><b></b><small></small></span>';
+    row.querySelector(".sa-av").textContent = String(account.name).split(/\s+/).map((w) => w[0] || "").join("").slice(0, 2).toUpperCase();
+    row.querySelector("b").textContent = account.name;
+    row.querySelector("small").textContent = `${account.role === "coach" ? "Personal Trainer" : "Cliente"} · ${account.email}`;
+    row.onclick = async () => {
+      host.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+      try { await switchToAccount(account.uid); }
+      catch (error) { showMessage(error.message, true); paintSavedAccounts(); }
+    };
+    host.append(row);
+  }
+  host.append(or);
+}
+paintSavedAccounts();

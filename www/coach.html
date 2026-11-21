@@ -50,6 +50,9 @@
   .coach-meta .cr{font-size:11px; color:var(--muted); font-weight:600;}
   .coach-av{width:38px;height:38px;border-radius:50%; background:linear-gradient(150deg,var(--accent),var(--accent-dark)); color:var(--on-accent); display:grid;place-items:center; font-family:'Archivo',system-ui,sans-serif; font-weight:800; font-size:14px;}
   .coach .coach-logout{min-height:38px;padding:8px 12px;}
+  .coach .coach-switch{min-height:38px;padding:8px 12px;font-weight:800;}
+  .coach .coach-switch[hidden]{display:none;}
+  @media (max-width:720px){.coach-switch-label{display:none;}}
   .coach .coach-logout:disabled{opacity:.6;cursor:wait;}
   .coach-settings{width:38px;height:38px;display:grid;place-items:center;flex:none;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;}
   .coach-settings:hover{color:var(--accent-ink);background:var(--accent-soft);}
@@ -717,7 +720,7 @@
   .mock-tools{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.mock-multiline{white-space:pre-wrap;overflow-wrap:anywhere}.mock-photo{max-width:100%;height:auto;border-radius:12px}.sec>h2{margin:18px 0 8px}.sec>.row,.sec>details{margin-bottom:8px}.modal-b input[type=file]{width:100%}.modal-b #mockModalError{color:var(--danger,#b03026)}.modal-b .fld>span{font-weight:700}.mock-tools .btn{flex-shrink:0}
 </style>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="chat.css?v=20261118-pose">
+<link rel="stylesheet" href="chat.css?v=20261121-account">
 </head>
 <body>
   <header class="topbar">
@@ -731,6 +734,7 @@
         <div class="coach-meta"><div class="cn">PT</div><div class="cr">Coach</div></div>
         <div class="coach-av">PT</div>
         <button class="btn btn-ghost" id="coachChat" type="button" aria-label="Chat" disabled><span class="coach-chat-label">Chat</span><span class="coach-chat-icon" aria-hidden="true"></span><span id="coachChatUnread" class="chat-count" hidden></span></button>
+        <button class="btn btn-ghost coach-switch" id="coachSwitch" type="button" aria-label="Cambia account" title="Cambia account" hidden>⇄ <span class="coach-switch-label">Cambia account</span></button>
         <button class="btn btn-ghost coach-logout" id="coachLogout" type="button" aria-label="Esci dall’account" disabled>Esci</button>
         <button class="coach-tema" id="coachTema" type="button" aria-label="Passa al tema scuro" title="Tema chiaro / scuro"></button>
         <button class="coach-settings" id="coachSettings" type="button" aria-label="Impostazioni" title="Impostazioni" disabled></button>
