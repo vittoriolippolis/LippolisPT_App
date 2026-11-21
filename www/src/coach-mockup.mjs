@@ -1,5 +1,6 @@
 import { adminCall, supabase, profileFromRow } from "./supabase.mjs";
 import { getAuthorizedSession, friendlyAuthError, logout } from "./auth.mjs";
+import { openAccountMenu, otherSavedAccounts, rememberAccount } from "./account-switch.mjs";
 import { athleteSessions, athleteWeightHistory, clientProgramList, mockupToProgram, programToMockup, nutritionSummary } from "./coach-mockup-model.mjs";
 import { parseExerciseVideo } from "./exercise-video.mjs";
 import { toAthleteProgram } from "./workout-metrics.mjs";
@@ -91,6 +92,14 @@ function saveWorkspace(explicit=false) {
   return task.catch(error=>{setSaveStatus("Salvataggio non riuscito");fail(error);return false;});
 }
 function setSaveStatus(message){const status=$("asTxt");if(status)status.textContent=message;}
+
+// Prima di cambiare account: salva il lavoro del pannello (come per «Esci»).
+async function saveBeforeLeave() {
+  const saved = !workspaceLoaded || await saveWorkspace();
+  return saved || window.confirm("Le ultime modifiche non sono state salvate. Vuoi cambiare account comunque?");
+}
+function openCoachAccounts() { openAccountMenu({ currentUid: uid, beforeLeave: saveBeforeLeave }); }
+function refreshAccountSwitch() { const b = $("coachSwitch"); if (b) b.hidden = !otherSavedAccounts(uid).length; }
 
 async function signOutCoach() {
   const headerButton = $("coachLogout");
@@ -973,7 +982,7 @@ function settings(panel,tab){
     panel.innerHTML=`<div class="set-title">Generali</div><div class="set-sec"><div class="set-sec-h">Dati personali</div><div class="avatar-edit">${escape(ui.initials(ui.COACH.name))}</div>
       <div class="fld-row">${field("mockCoachFirst","Nome","text",profile.firstName,true)}${field("mockCoachLast","Cognome","text",profile.lastName,true)}</div>
       ${field("mockCoachEmail","Indirizzo email","email",profile.email)}${button("mockCoachSave","Salva modifiche",true)}
-      </div><div class="set-sec"><div class="set-sec-h">Gestione account</div>${button("mockCoachPassword","Cambia password")}${button("mockLogout","Esci dall’account")}</div>`;
+      </div><div class="set-sec"><div class="set-sec-h">Gestione account</div>${button("mockCoachPassword","Cambia password")}${button("mockSwitchAccount","Cambia account / aggiungi un altro account")}${button("mockLogout","Esci dall’account")}</div>`;
     $("mockCoachEmail").readOnly=true;
     $("mockCoachSave").onclick=async()=>{
       const first=val("mockCoachFirst"),last=val("mockCoachLast");
@@ -984,6 +993,7 @@ function settings(panel,tab){
       }catch(error){fail(error);}
     };
     $("mockLogout").onclick=signOutCoach;
+    $("mockSwitchAccount").onclick=openCoachAccounts;
     $("mockCoachPassword").onclick=()=>showModal("Cambia password",field("mockNewPassword","Nuova password","password","",true)+field("mockConfirmPassword","Ripeti la password","password","",true),"Salva password",async()=>{
       const password=val("mockNewPassword");if(password.length<12||password!==val("mockConfirmPassword"))throw new Error("Usa almeno 12 caratteri e ripeti la stessa password.");
       checked(await supabase.auth.updateUser({password}));ui.toast("Password aggiornata");
@@ -1121,6 +1131,7 @@ async function start(){
     if(session.reason){ location.replace("index.html");return; }
     profile=session.profile;uid=session.user.uid;updateIdentity();
     $("coachLogout").disabled=false;
+    rememberAccount(profile,session.user).then(refreshAccountSwitch).catch(()=>{});
     const saved=checked(await supabase.from("coach_workspaces").select("content,revision").eq("coach_id",uid).maybeSingle());
     for(const ex of ui.libreria)ex.id="catalog:"+ex.nome;
     if(saved){
@@ -1206,4 +1217,5 @@ function openNotification(destination,clientId){
 }
 window.CoachDB={bodyWeightPanel,saveWorkspace,syncWorkspace,deleteProgram,deleteMealPlan,saveProgram,assignProgram,publishNutrition,confirmNutritionDayDeletion,createClient,openClient,programHistory,clientSection,weightHistoryOverview,addMeasure,metricActions,createExercise,saveExercise,exerciseAttachments,settings,sendPriority,storeSignal,recipes,renderInbox,editCalendarReminder,deleteCalendarReminder};
 $("coachLogout").onclick=signOutCoach;
+$("coachSwitch").onclick=openCoachAccounts;
 void start();

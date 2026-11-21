@@ -21,6 +21,7 @@
     button.primary{width:100%;margin-top:22px;border:0;border-radius:13px;padding:14px 18px;background:var(--brand);color:#04231b;font:800 14px Archivo,sans-serif;cursor:pointer}.primary:disabled{opacity:.55;cursor:wait}.secondary{border:1px solid var(--line);border-radius:11px;padding:11px 14px;background:#fff;color:var(--ink);font-weight:800;cursor:pointer}.link{border:0;background:none;color:#087b65;font-weight:800;cursor:pointer;padding:12px 0;margin-top:4px}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}
     .message{display:none;margin-top:18px;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.45;background:#eef8f5;color:#135b4d}.message.show{display:block}.message.error{background:#fff0ef;color:var(--danger)}
     .onboarding{display:none}.onboarding.show{display:block}.login.hidden{display:none}.steps{display:grid;gap:12px;margin:22px 0}.step{padding:16px;border:1px solid var(--line);border-radius:15px}.step b{font:800 14px Archivo,sans-serif}.step p{font-size:13px;color:var(--muted);line-height:1.5;margin:7px 0 12px}.done{color:#087b65}
+    .saved-accounts{display:grid;gap:8px;margin:0 0 6px}.saved-accounts .sa-h{font-size:12px;font-weight:800;margin:0 0 2px}.sa-row{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:#f6faf9;font:inherit;color:var(--ink);text-align:left;cursor:pointer}.sa-row b{display:block;font-size:14px}.sa-row small{color:var(--muted);font-size:12px}.sa-av{flex:0 0 38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#04231b;font:800 13px Archivo,sans-serif}.sa-or{color:var(--muted);font-size:12px;text-align:center;margin:8px 0 0}
     .config{padding:16px;border:1px solid #f2c5c1;background:#fff4f3;border-radius:14px;color:#8b302a;font-size:13px;line-height:1.55}
     @media(max-width:760px){body{padding:0;background:#fff}.shell{grid-template-columns:1fr;border:0;border-radius:0;min-height:100vh}.hero{min-height:auto;padding:24px}.hero h1,.hero p,.hero small{display:none}.panel{padding:32px 24px 48px}}
   </style>
@@ -37,6 +38,7 @@
       <div id="loginBox" class="login">
         <h2>Accedi</h2>
         <p class="lead">L’area corretta si apre automaticamente in base al tuo account.</p>
+        <div id="savedAccounts" class="saved-accounts" hidden></div>
         <form id="loginForm" novalidate>
           <label for="email">Email</label>
           <div class="field"><input id="email" type="email" autocomplete="username" required></div>

@@ -76,6 +76,8 @@
   .topbar .account-tools{display:flex;align-items:center;gap:10px;margin-left:auto;}
   .topbar .account-exit{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);padding:8px 11px;font:700 12px 'Manrope',system-ui,sans-serif;cursor:pointer;white-space:nowrap;}
   .topbar .account-exit svg{width:16px;height:16px;}
+  .topbar .account-exit[hidden]{display:none;}
+  .topbar .account-switch{padding:8px 9px;}
   .pf-save-status{min-height:18px;margin:6px 2px 12px;color:var(--muted);font-size:11px;font-weight:700;}
   .pf-save-status.error{color:var(--danger-ink);}
   .password-modal{position:absolute;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(8,17,15,.58);}
@@ -797,7 +799,7 @@
 
 </style>
 <style>.set-prescription{display:block;margin-top:3px;color:var(--muted);font-size:9px;font-weight:600;line-height:1.25;white-space:normal}</style>
-<link rel="stylesheet" href="chat.css?v=20261118-pose">
+<link rel="stylesheet" href="chat.css?v=20261121-account">
 </head>
 <body>
   <div class="phone">
@@ -809,6 +811,7 @@
       <div class="account-tools">
         <div class="identity" id="athleteIdentity"></div>
         <div class="avatar" onclick="showTab('profilo')">LP</div>
+        <button class="account-exit account-switch" id="accountSwitch" type="button" aria-label="Cambia account" title="Cambia account" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg></button>
         <button class="account-exit" id="athleteLogout" type="button" aria-label="Esci dall'account" onclick="window.lippolisLogoutNow()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>Esci</span></button>
       </div>
     </div>

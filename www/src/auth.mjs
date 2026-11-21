@@ -41,6 +41,12 @@ export function destinationFor(profile) { return profile?.role === "coach" ? "co
 
 export async function logout() {
   let timeout;
+  // «Esci» toglie questo account da quelli salvati per «Cambia account»; gli altri restano.
+  try {
+    const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: {} };
+    const saved = JSON.parse(localStorage.getItem("lpt_account_salvati") || "{}");
+    if (session?.user?.id && saved[session.user.id]) { delete saved[session.user.id]; localStorage.setItem("lpt_account_salvati", JSON.stringify(saved)); }
+  } catch {}
   try {
     if (supabase) {
       await Promise.race([

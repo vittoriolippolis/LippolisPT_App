@@ -72,6 +72,7 @@ async function startAthlete({ onSave, getState, getProgram } = {}) {
     watchAthleteNutrition(uid, callback) { callback({ state: "ready", plan: { uid } }); return () => {}; },
     createNotifications: () => ({ mount() {}, notify() {} }),
     markChatRead() {},
+    rememberAccount: async () => {}, otherSavedAccounts: () => [], openAccountMenu() {},
     friendlyAuthError: (error) => error.message,
     alert: (message) => alerts.push(message),
     location: { replace: (value) => alerts.push(value) },
