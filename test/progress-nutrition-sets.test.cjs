@@ -95,4 +95,5 @@ test("in grigio i valori della volta scorsa; reps scritte senza peso → peso de
   assert.match(page, /placeholder="\$\{esc\(prev\[i\]\?\.repsTxt\|\|/);
   assert.match(page, /if\(st\.sets\[s\]\.reps&&!st\.sets\[s\]\.kg&&prev\[s\]\?\.kgTxt/);
   assert.match(page, /\.card\.done\{border:1\.5px solid var\(--accent\)/);
+  assert.match(page, /\.card\.done :is\(\.tg,\.set \.field,/);
 });

@@ -168,6 +168,11 @@
   .card{background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--r); padding:13px 13px 11px; transition:border-color .2s, box-shadow .2s; margin-bottom:13px; box-shadow:var(--shadow-card); opacity:0; transform:translateY(10px); animation:rise .5s forwards;}
   @keyframes rise{to{opacity:1; transform:none;}}
   .card.done{border:1.5px solid var(--accent); background:linear-gradient(135deg,rgba(var(--accent-rgb),.42),rgba(var(--accent-rgb),.2) 65%,rgba(var(--accent-rgb),.14)),var(--surface); box-shadow:0 6px 18px rgba(var(--accent-rgb),.28);}
+  /* Esercizio completato: tutti i riquadri interni prendono il colore principale, più tenue (niente grigi) */
+  .card.done :is(.tg,.set .field,.duo-btn,.note,.cnote-ta,.exercise-history,.del-set-btn,.add-set-btn,.sugg-apply){background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.38);}
+  .card.done .sc-table td{background:rgba(var(--accent-rgb),.12); border-bottom-color:rgba(var(--accent-rgb),.25);}
+  .card.done .sc-table td:first-child{background:rgba(var(--accent-rgb),.3);}
+  .card.done .note{border-left-color:var(--accent);}
   .card.done .badge{background:var(--accent); color:var(--on-accent); border-color:var(--accent);}
   .card.done .ex-sum{color:var(--text);}
   .card-top{display:flex; align-items:center; gap:11px; cursor:pointer;}
