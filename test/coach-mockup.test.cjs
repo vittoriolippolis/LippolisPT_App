@@ -133,7 +133,7 @@ test("app cliente: notifiche richiudibili, carichi giù in rosso, esercizi chius
   const html = fs.readFileSync(path.join(__dirname, "../www/athlete.html"), "utf8");
   assert.match(html, /<details class="pf-fold" id="athleteAlertFold">/);
   assert.match(html, /\.sg\.down\{background:rgba\(var\(--sg-down-rgb\)/);
-  assert.match(html, /st\.chiuso\?'':' open'/);
+  assert.match(html, /st\.aperta\?' open':''/);
   assert.doesNotMatch(html, /id="coUrg"/);
   assert.doesNotMatch(html, /id="coDif"/);
 });
