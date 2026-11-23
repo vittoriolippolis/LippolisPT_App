@@ -203,7 +203,6 @@
   .tg-timer:active{transform:scale(.97);}
   /* Serie · Reps · RIR occupano tutta la riga, larghi quanto la barra del recupero sotto */
   .targets.targets-fill > *{flex:1 1 auto; text-align:center; justify-content:center;}
-  .prev-hint{font-size:11.5px; color:var(--muted); font-weight:600; margin:12px 0 -4px;}
   .rec-bar{display:flex; justify-content:center; align-items:center; gap:9px; width:100%; margin-top:8px; padding:10px 14px; border-radius:11px; font-size:13px; font-weight:800; color:var(--accent-ink);}
   .rec-bar span{letter-spacing:.08em; text-transform:uppercase;}
   .rec-bar b{font-family:'Archivo',system-ui,sans-serif; font-weight:800; font-size:15px;}
@@ -1824,12 +1823,44 @@
     updateProgress();
   }
   // ====== MOTORE PROGRESSIONE CARICHI (da "Teorie di progressione": suggerimenti per serie dallo storico) ======
-  function stepOf(ex){ return ex.step!=null ? ex.step : 2.5; }
-  function roundStepKg(v,st){ return Math.round(v/st)*st; }
-  function fmtKgS(v){ return (Math.round(v*10)/10).toString().replace('.', ','); }
+  // Carichi possibili con i dischi della palestra (1,25 · 2,5 · 5 · 10 · 15 · 20 kg): ogni multiplo di 1,25 kg.
+  const DISCO_MIN=1.25;
+  function stepOf(ex){ return ex.step!=null ? ex.step : DISCO_MIN; }
+  function fmtKgS(v){ return String(Math.round(v*100)/100).replace('.', ','); }
   function parseTarget(t){ const m=String(t).trim().match(/^(\d+)\s*[-/]\s*(\d+)(?!\d)/); if(m) return {lo:+m[1], hi:+m[2], fix:false}; const n=parseInt(t,10); return isNaN(n)?null:{lo:n, hi:n, fix:true}; }
-  function upKg(kg,st){ if(!kg||kg<=0) return st; const r=roundStepKg(kg*1.05,st); return +((r>=kg+st?r:kg+st).toFixed(1)); }
-  function downKg(kg,st){ const r=roundStepKg(kg*0.95,st); const v=(r>0&&r<=kg-st)?r:(kg-st); return +(Math.max(v,0).toFixed(1)); }
+  // Aumento: il carico fattibile più vicino a +5% (almeno un disco da 1,25 in più). Calo: −5% arrotondato in giù.
+  function upKg(kg,st=DISCO_MIN){ if(!kg||kg<=0) return st; let r=Math.round(kg*1.05/st)*st; if(r<=kg+1e-9) r+=st; return +r.toFixed(2); }
+  function downKg(kg,st=DISCO_MIN){ let r=Math.floor((kg*0.95+1e-9)/st)*st; if(r>=kg-1e-9) r-=st; return +Math.max(r,0).toFixed(2); }
+  // TECNICA 1 del Metodo (M07): prima serie col carico della volta scorsa, nella seconda si aumenta;
+  // se le ripetizioni si chiudono quello è il nuovo carico, e nelle sedute dopo sale una serie in più
+  // (3ª, poi 4ª, poi anche la 1ª). Quando tutte le serie sono al carico nuovo si riparte: 2ª serie su.
+  // Serie col carico nuovo lontana dal range (2+ reps sotto) → torna al carico di prima e cerca una rep in più (Tecnica 2).
+  function tecnica1(seq){
+    const base=seq[0].kg, H=Math.max(...seq.map(r=>r.kg)), out=[];
+    const chiusa=r=>r.reps>=r.t.lo, pesante=r=>r.kg>=H-1e-9;
+    if(H<=base+1e-9){
+      seq.forEach((r,k)=>{
+        if(k===1||(seq.length===1&&chiusa(r))) out[k]={dir:'up',kg:upKg(base),why:`${seq.length===1?'serie chiusa':'2ª serie'}: aumenta il peso; se chiudi le ripetizioni è il tuo nuovo carico`};
+        else out[k]={dir:'keep',kg:base,why:k===0?'carico della volta scorsa':'torna al carico della prima serie'};
+      });
+      return out;
+    }
+    const nuove=seq.map((r,k)=>k>0&&pesante(r));
+    const tutteChiuse=seq.every((r,k)=>!nuove[k]||chiusa(r));
+    const frontiera=tutteChiuse?seq.findIndex((r,k)=>k>0&&!nuove[k]):-1;
+    const promuoviPrima=tutteChiuse&&frontiera===-1;
+    seq.forEach((r,k)=>{
+      if(k===0) out[k]=promuoviPrima?{dir:'up',kg:H,why:`tutte le serie chiuse a ${fmtKgS(H)} kg: ora anche la prima`}:{dir:'keep',kg:base,why:'carico della volta scorsa'};
+      else if(nuove[k]){
+        if(chiusa(r)) out[k]={dir:'keep',kg:H,why:`chiusa a ${fmtKgS(H)} kg: è il tuo nuovo carico`};
+        else if(r.t.lo-r.reps>=2) out[k]={dir:'push',kg:base,why:`a ${fmtKgS(H)} kg troppo sotto (${r.reps}/${r.t.lo}): torna a ${fmtKgS(base)} kg e cerca una rep in più`};
+        else out[k]={dir:'keep',kg:H,why:`${r.reps}/${r.t.lo} a ${fmtKgS(H)} kg: riprova a chiuderla`};
+      }
+      else if(k===frontiera) out[k]={dir:'up',kg:H,why:`serie precedenti chiuse a ${fmtKgS(H)} kg: aumenta anche questa`};
+      else out[k]={dir:'keep',kg:base,why:'torna al carico della prima serie'};
+    });
+    return out;
+  }
   function suggSets(ex){
     const previous=riferimento(ex);
     if(!previous) return null;
@@ -1874,6 +1905,19 @@
       return out;
     }
 
+    if(mode==='range'){
+      // Ogni lato degli unilaterali segue la sua sequenza di serie.
+      const lati=uni?[0,1]:[0], perSerie=uni?Math.ceil(n/2):n;
+      let fatto=true;
+      for(const lato of lati){
+        const slots=Array.from({length:perSerie},(_,k)=>uni?2*k+lato:k).filter(i=>i<n);
+        const seq=slots.map(i=>references[i]?{...references[i],t:parseTarget(ex.reps)}:null);
+        if(seq.some(r=>!r)||!seq[0]?.t||!(seq[0].kg>0)){ fatto=false; break; }
+        tecnica1(seq).forEach((sug,k)=>{ out.sets[slots[k]]={...sug,lkg:seq[k].kg,lreps:seq[k].reps}; });
+      }
+      if(fatto){ out.note='Metodo Lippolis: prima serie col carico della volta scorsa, nella seconda aumenti; quando chiudi le ripetizioni col carico nuovo, nelle sedute dopo sale anche la serie successiva.'; return out; }
+      out.sets=[];
+    }
     const dropTgt = mode==='drop' ? parseInt((String(ex.reps).match(/\d+/)||['8'])[0],10) : null;
     for(let i=0;i<n;i++){
       const set=references[i];
@@ -1899,11 +1943,9 @@
           else if(diff<=2) s={dir:'keep', kg:kg, why:reps+'/'+t.lo+' reps: stesso peso, punta alle reps'};
           else s={dir:'down', kg:downKg(kg,st), why:'troppe reps sotto il target ('+reps+'/'+t.lo+')'};
         } else {
-          const flex = t.lo>=12;
           if(reps>t.hi){ s = kg>0 ? {dir:'up', kg:upKg(kg,st), why:'hai sforato il range ('+reps+'&gt;'+t.hi+')'} : {dir:'zav', kg:st, why:'range sforato a corpo libero: pronto per la zavorra'}; }
           else if(reps===t.hi){
-            if(flex) s={dir:'push', kg:kg, why:'range alto: stesso peso, punta a '+(t.hi+1)+'-'+(t.hi+2)+' reps prima di salire'};
-            else s = kg>0 ? {dir:'up', kg:upKg(kg,st), why:'tetto del range ('+reps+'/'+t.hi+'): rischi di sforare'} : {dir:'zav', kg:st, why:'tetto del range a corpo libero: pronto per la zavorra'};
+            s = kg>0 ? {dir:'up', kg:upKg(kg,st), why:'tetto del range ('+reps+'/'+t.hi+'): rischi di sforare'} : {dir:'zav', kg:st, why:'tetto del range a corpo libero: pronto per la zavorra'};
           }
           else if(reps<t.lo){ s = kg>0 ? {dir:'down', kg:downKg(kg,st), why:'sotto il range ('+reps+'&lt;'+t.lo+')'} : {dir:'keep', kg:0, why:'a corpo libero: consolida le reps'}; }
           else if(reps===t.lo){ s={dir:'keep', kg:kg, why:'base del range ('+reps+'/'+t.lo+'-'+t.hi+'): stesso peso, punta ad almeno una in più'}; }
@@ -1953,7 +1995,7 @@
     if(hasSets){
       const typeLabel={warmup:'Riscaldamento',working:'Lavoro',top:'Top set',back_off:'Back-off',drop:'Drop',mini_set:'Mini-set',cluster_group:'Gruppo',failure:'Cedimento'};
       const setCount=slotCount(ex,st);
-      sets=`${prev.some(Boolean)?'<div class="prev-hint">In grigio: quello che hai fatto la volta scorsa</div>':''}<div class="set-labels"><span></span><span>Peso (kg)</span><span>${ex.unita==='sec'?'Secondi':'Ripetizioni'}</span><span>RIR</span></div><div class="sets">`;
+      sets=`<div class="set-labels"><span></span><span>Peso (kg)</span><span>${ex.unita==='sec'?'Secondi':'Ripetizioni'}</span><span>RIR</span></div><div class="sets">`;
       for(let s=1;s<=setCount;s++){
         const i=s-1, k=uni?Math.ceil(s/2):s, prescribed=ex.prescriptions&&ex.prescriptions[i], targetReps=ex.repsSerie?.[i]||ex.reps||'', targetLoad=ex.carichiSerie?.[i]||ex.carico||'';
         const targetType=prescribed?typeLabel[prescribed.set_type]||'Lavoro':'';
@@ -1971,7 +2013,7 @@
     const sg=supportsProgression?suggSets(ex):null;
     let suggHTML='';
     if(sg){
-      const chipTxt=(s)=> s.dir==='up'?('↑ '+fmtKgS(s.kg)+' kg') : s.dir==='down'?('↓ '+fmtKgS(s.kg)+' kg') : s.dir==='push'?('+reps · '+fmtKgS(s.kg)+' kg') : s.dir==='zav'?('+ zavorra '+fmtKgS(s.kg)+' kg') : ('= '+(s.kg>0?fmtKgS(s.kg)+' kg':'C.L.'));
+      const chipTxt=(s)=> s.dir==='up'?('↑ '+fmtKgS(s.kg)+' kg') : s.dir==='down'?('↓ '+fmtKgS(s.kg)+' kg') : s.dir==='push'?('+1 rep · '+fmtKgS(s.kg)+' kg') : s.dir==='zav'?('+ zavorra '+fmtKgS(s.kg)+' kg') : ('= '+(s.kg>0?fmtKgS(s.kg)+' kg':'C.L.'));
       const rows=sg.sets.map((s,i)=>{
         const peso=(s.lkg>0?fmtKgS(s.lkg)+' kg':'C.L.');
         const fillable=s.kg>0;
