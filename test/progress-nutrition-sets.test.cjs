@@ -76,3 +76,23 @@ test("consigli alimentari: tutti i giorni a fisarmonica con calorie e macro; rec
   assert.match(page, /\.targets\.targets-fill > \*\{flex:1 1 auto/);
   assert.match(page, /\.mcard\{[^}]*color-mix\(in srgb,var\(--surface\) 92%/);
 });
+
+test("serie: «20 kg», «pc», «C.L.» e «12 reps» valgono; esercizi chiusi di partenza; recupero centrato", () => {
+  const { leggiSerie, partiKg, partiReps } = serie();
+  assert.deepEqual([...partiKg("20 kg")], [20]);
+  assert.deepEqual([...partiKg("20kg")], [20]);
+  assert.deepEqual([...partiKg("pc")], [0]);
+  assert.deepEqual([...partiKg("C.L.")], [0]);
+  assert.deepEqual([...partiReps("12 reps")], [12]);
+  assert.ok(leggiSerie({ carico: "20" }, { kg: "20 kg", reps: "12", rir: "1" }, 0));
+  assert.match(page, /c\.className='card'\+\(st\.aperta\?' open':''\)/);
+  assert.match(page, /<span>Recupero<\/span><b>\$\{fmtT\(recS\)\}<\/b>/);
+  assert.match(page, /\.rec-bar\{display:flex; justify-content:center;/);
+});
+
+test("in grigio i valori della volta scorsa; reps scritte senza peso → peso della volta scorsa", () => {
+  assert.match(page, /placeholder="\$\{esc\(prev\[i\]\?\.kgTxt\|\|targetLoad\)\}"/);
+  assert.match(page, /placeholder="\$\{esc\(prev\[i\]\?\.repsTxt\|\|/);
+  assert.match(page, /if\(st\.sets\[s\]\.reps&&!st\.sets\[s\]\.kg&&prev\[s\]\?\.kgTxt/);
+  assert.match(page, /\.card\.done\{border:1\.5px solid var\(--accent\)/);
+});

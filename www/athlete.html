@@ -167,7 +167,9 @@
 
   .card{background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--r); padding:13px 13px 11px; transition:border-color .2s, box-shadow .2s; margin-bottom:13px; box-shadow:var(--shadow-card); opacity:0; transform:translateY(10px); animation:rise .5s forwards;}
   @keyframes rise{to{opacity:1; transform:none;}}
-  .card.done{border-color:rgba(var(--accent-rgb),.5); background:linear-gradient(180deg,var(--accent-soft),var(--surface) 70%);}
+  .card.done{border:1.5px solid var(--accent); background:linear-gradient(135deg,rgba(var(--accent-rgb),.42),rgba(var(--accent-rgb),.2) 65%,rgba(var(--accent-rgb),.14)),var(--surface); box-shadow:0 6px 18px rgba(var(--accent-rgb),.28);}
+  .card.done .badge{background:var(--accent); color:var(--on-accent); border-color:var(--accent);}
+  .card.done .ex-sum{color:var(--text);}
   .card-top{display:flex; align-items:center; gap:11px; cursor:pointer;}
   .card-caret{flex:0 0 auto; color:var(--muted2); display:grid; place-items:center; transition:transform .2s;}
   .card-caret svg{width:18px;height:18px;}
@@ -182,7 +184,7 @@
   .ex-muscle{font-size:11.5px; color:var(--muted); font-weight:600; margin-top:2px;}
   .chk{flex:0 0 auto; width:30px;height:30px;border-radius:50%; border:2px solid var(--line); background:var(--surface); cursor:pointer; display:grid; place-items:center; transition:.18s; margin-top:2px; color:var(--text);}
   .chk svg{width:15px;height:15px; opacity:0; transform:scale(.5); transition:.18s;}
-  .card.done .chk{background:var(--accent); border-color:var(--accent); color:var(--on-accent);}
+  .card.done .chk{background:var(--accent); border-color:var(--accent); color:var(--on-accent); box-shadow:0 0 0 4px rgba(var(--accent-rgb),.25);}
   .card.done .chk svg{opacity:1; transform:none;}
   .targets{display:flex; gap:7px; flex-wrap:nowrap; overflow-x:auto; margin:11px 0 0; scrollbar-width:none; -ms-overflow-style:none;}
   .targets::-webkit-scrollbar{display:none;}
@@ -196,8 +198,9 @@
   .tg-timer:active{transform:scale(.97);}
   /* Serie · Reps · RIR occupano tutta la riga, larghi quanto la barra del recupero sotto */
   .targets.targets-fill > *{flex:1 1 auto; text-align:center; justify-content:center;}
-  .rec-bar{display:flex; width:100%; margin-top:8px; padding:10px 14px; border-radius:11px; font-size:13px; font-weight:700; color:var(--accent-ink);}
-  .rec-bar span{flex:1; text-align:left;}
+  .prev-hint{font-size:11.5px; color:var(--muted); font-weight:600; margin:12px 0 -4px;}
+  .rec-bar{display:flex; justify-content:center; align-items:center; gap:9px; width:100%; margin-top:8px; padding:10px 14px; border-radius:11px; font-size:13px; font-weight:800; color:var(--accent-ink);}
+  .rec-bar span{letter-spacing:.08em; text-transform:uppercase;}
   .rec-bar b{font-family:'Archivo',system-ui,sans-serif; font-weight:800; font-size:15px;}
   .rec-bar svg{width:15px;height:15px;}
 
@@ -1300,12 +1303,13 @@
   // carichi «22,5/15», «22,5+15», «30,20». Nei kg la virgola resta decimale (22,5 · 1,25 · 17,50)
   // tranne quando dopo ci sono 2+ cifre che formano un numero più piccolo (30,20 = 30 poi 20).
   function partiReps(value){
-    const t=String(value??'').trim(); if(!t) return null;
+    const t=String(value??'').replace(/\s*(ripetizioni|reps?|rip\.?)\s*$/i,'').trim(); if(!t) return null;
     const parts=t.split(/[\s,.+\/;\-]+/).filter(Boolean);
     return parts.length&&parts.every(p=>/^\d+$/.test(p)&&Number(p)>0)?parts.map(Number):null;
   }
   function partiKg(value){
-    const t=String(value??'').trim(); if(!t) return null;
+    const t=String(value??'').replace(/\s*kg\b\.?/gi,'').trim(); if(!t) return null;
+    if(/^(p\.?\s?c\.?|c\.?\s?l\.?|corpo libero)$/i.test(t)) return [0];
     const out=[];
     for(const chunk of t.split(/\s*[\/+;]\s*|\s*-\s*(?=\d)|\s+/).filter(Boolean)){
       const m=chunk.match(/^(\d+),(\d{2,})$/);
@@ -1908,16 +1912,28 @@
     return out;
   }
 
+  // Serie della volta precedente (stesso giorno, altrimenti l'ultima in assoluto): in grigio nei campi.
+  function precedentiSerie(ex){
+    const previous=riferimento(ex); if(!previous) return [];
+    const {sets:last,perSide}=previous, uni=isUnilat(ex), n=nSlot(ex);
+    const bySlot=new Map(last.filter(set=>Number.isInteger(set.slot)).map(set=>[set.slot,set]));
+    return Array.from({length:Math.max(n,last.length*(uni&&!perSide?2:1))},(_,i)=>{
+      const set=bySlot.size?bySlot.get(i):last[uni&&!perSide&&last.length<=n/2?Math.floor(i/2):i];
+      if(!set||set.reps==null) return null;
+      const kg=valoreSerie(set.kg);
+      return {kg, kgTxt:set.kgTesto||(kg===null?'':kg===0?'C.L.':fmtKgIt(kg)), repsTxt:String(set.repsTesto||set.reps)};
+    });
+  }
   function card(ex, idx){
     const st=exState(giornoCorr, idx, nSlot(ex)); const uni=isUnilat(ex);
-    const c=document.createElement('div'); c.className='card'+(st.chiuso?'':' open')+(isDone(ex,st)?' done':''); c.style.animationDelay=(idx*0.04)+'s';
+    const c=document.createElement('div'); c.className='card'+(st.aperta?' open':'')+(isDone(ex,st)?' done':''); c.style.animationDelay=(idx*0.04)+'s';
     let targets, recBar='';
     if(ex.cardio||ex.timed){
       targets=`<button class="tg tg-timer" data-sec="${toSec(ex.tempo)}" data-label="${esc(ex.nome)}">Tempo <b>${esc(ex.tempo)}</b> ${I.play}</button>`;
     } else {
       const recS=recEff(ex);
       // Recupero in una barra a tutta larghezza sotto Serie/Reps/RIR: sempre visibile, mai nascosto a destra.
-      if(recS>0) recBar=`<button type="button" class="tg-timer rec-bar" data-sec="${recS}" data-label="Recupero">${I.play}<span>Avvia recupero</span><b>${fmtT(recS)}</b></button>`;
+      if(recS>0) recBar=`<button type="button" class="tg-timer rec-bar" data-sec="${recS}" data-label="Recupero">${I.play}<span>Recupero</span><b>${fmtT(recS)}</b></button>`;
       const rirChip=(ex.rir!=null)?`<button class="tg tg-rir" data-rir-info aria-label="Cos'è il RIR">RIR <b>${esc(ex.rirTxt||ex.rir)}</b><span class="q">?</span></button>`:'';
       const rmChip=ex.rm?`<div class="tg">RM <b>${esc(ex.rm)}</b></div>`:'';
       targets=`<div class="tg">Serie <b>${esc(ex.serie)}</b>${uni&&!RX_REPS_LATO.test(ex.reps)?' per lato':''}</div><div class="tg">${ex.unita==='sec'?'Tempo':'Reps'} <b>${esc(ex.reps)}</b></div>${rmChip}${rirChip}`;
@@ -1928,10 +1944,11 @@
     const duo=hasExec?`<div class="duo"><button class="duo-btn duo-exec"><span class="di">${I.play}</span><span class="dl">Esecuzione</span></button></div>`:'';
     const approvedLoad=(coachSections.loads?.items||[]).findLast(item=>item.versionId===versioneSchedaLocale&&(item.exerciseId===ex.id||item.exerciseName===ex.nome));
     let sets='';
+    const prev=hasSets?precedentiSerie(ex):[];
     if(hasSets){
       const typeLabel={warmup:'Riscaldamento',working:'Lavoro',top:'Top set',back_off:'Back-off',drop:'Drop',mini_set:'Mini-set',cluster_group:'Gruppo',failure:'Cedimento'};
       const setCount=slotCount(ex,st);
-      sets=`<div class="set-labels"><span></span><span>Peso (kg)</span><span>${ex.unita==='sec'?'Secondi':'Ripetizioni'}</span><span>RIR</span></div><div class="sets">`;
+      sets=`${prev.some(Boolean)?'<div class="prev-hint">In grigio: quello che hai fatto la volta scorsa</div>':''}<div class="set-labels"><span></span><span>Peso (kg)</span><span>${ex.unita==='sec'?'Secondi':'Ripetizioni'}</span><span>RIR</span></div><div class="sets">`;
       for(let s=1;s<=setCount;s++){
         const i=s-1, k=uni?Math.ceil(s/2):s, prescribed=ex.prescriptions&&ex.prescriptions[i], targetReps=ex.repsSerie?.[i]||ex.reps||'', targetLoad=ex.carichiSerie?.[i]||ex.carico||'';
         const targetType=prescribed?typeLabel[prescribed.set_type]||'Lavoro':'';
@@ -1939,7 +1956,7 @@
         const label=esc(slotLabel(ex,i));
         const rest=Number(prescribed?.rest_seconds);
         const workSec=ex.unita==='sec'?secondiTarget(targetReps):0;
-        sets+=`<div class="set${uni?' lato-'+LATI[(s-1)%2].toLowerCase():''}"><div class="sl">SERIE ${k}${uni?'<small>'+LATI[(s-1)%2]+'</small>':''}${targetSummary?`<small class="set-prescription">${esc(targetSummary)}</small>`:''}</div><div class="field"><input type="text" inputmode="decimal" aria-label="Peso serie ${label}" placeholder="${esc(targetLoad)}"><span>${ex.perLato?'kg/lato':'kg'}</span></div><div class="field"><input type="text" inputmode="decimal" aria-label="${ex.unita==='sec'?'Secondi':'Ripetizioni'} serie ${label}" placeholder="${esc(String(targetReps).replace(/s$/i,''))}"><span>${ex.unita==='sec'?'sec':'reps'}</span></div><div class="field f-rir"><input type="number" inputmode="numeric" min="0" max="10" aria-label="RIR serie ${label}" placeholder="${esc(prescribed?.target_rir??ex.rir??'')}"><span>RIR</span></div>${workSec>0?`<button type="button" class="tg set-work" data-work="${workSec}" data-si="${i}" data-label="${esc(ex.nome)} · Serie ${label}" data-rest="${Number.isFinite(rest)&&rest>0?rest:(recEff(ex)||0)}" aria-label="Avvia timer esercizio serie ${label}">${I.stopwatch} ${fmtT(workSec)}</button>`:''}${Number.isFinite(rest)&&rest>0?`<button type="button" class="tg tg-timer set-rest" data-sec="${rest}" data-label="Recupero serie ${label}" aria-label="Avvia recupero serie ${label}">${I.play} ${fmtT(rest)}</button>`:''}</div>`;
+        sets+=`<div class="set${uni?' lato-'+LATI[(s-1)%2].toLowerCase():''}"><div class="sl">SERIE ${k}${uni?'<small>'+LATI[(s-1)%2]+'</small>':''}${targetSummary?`<small class="set-prescription">${esc(targetSummary)}</small>`:''}</div><div class="field"><input type="text" inputmode="decimal" aria-label="Peso serie ${label}" placeholder="${esc(prev[i]?.kgTxt||targetLoad)}"><span>${ex.perLato?'kg/lato':'kg'}</span></div><div class="field"><input type="text" inputmode="decimal" aria-label="${ex.unita==='sec'?'Secondi':'Ripetizioni'} serie ${label}" placeholder="${esc(prev[i]?.repsTxt||String(targetReps).replace(/s$/i,''))}"><span>${ex.unita==='sec'?'sec':'reps'}</span></div><div class="field f-rir"><input type="number" inputmode="numeric" min="0" max="10" aria-label="RIR serie ${label}" placeholder="${esc(prescribed?.target_rir??ex.rir??'')}"><span>RIR</span></div>${workSec>0?`<button type="button" class="tg set-work" data-work="${workSec}" data-si="${i}" data-label="${esc(ex.nome)} · Serie ${label}" data-rest="${Number.isFinite(rest)&&rest>0?rest:(recEff(ex)||0)}" aria-label="Avvia timer esercizio serie ${label}">${I.stopwatch} ${fmtT(workSec)}</button>`:''}${Number.isFinite(rest)&&rest>0?`<button type="button" class="tg tg-timer set-rest" data-sec="${rest}" data-label="Recupero serie ${label}" aria-label="Avvia recupero serie ${label}">${I.play} ${fmtT(rest)}</button>`:''}</div>`;
       }
       sets+=`</div><div class="set-btns"><button type="button" class="add-set-btn">+ Aggiungi serie</button>${setCount>(uni?2:1)?'<button type="button" class="del-set-btn">− Togli serie</button>':''}</div>`;
     }
@@ -1981,7 +1998,7 @@
         ${sets}
         ${cnote}
       </div>`;
-    if(hasSets){ c.querySelectorAll('.set').forEach((row,s)=>{ const ins=row.querySelectorAll('input'); ins[0].value=st.sets[s].kg??''; ins[1].value=st.sets[s].reps??''; ins[2].value=st.sets[s].rir??''; paintRir(ex,row,st.sets[s].rir); ins[0].addEventListener('input',e=>{st.sets[s].kg=e.target.value.trim(); afterChange(ex,st,c);}); ins[1].addEventListener('input',e=>{st.sets[s].reps=e.target.value.trim(); afterChange(ex,st,c);}); ins[2].addEventListener('input',e=>{st.sets[s].rir=e.target.value.trim(); paintRir(ex,row,st.sets[s].rir); afterChange(ex,st,c);}); }); }
+    if(hasSets){ c.querySelectorAll('.set').forEach((row,s)=>{ const ins=row.querySelectorAll('input'); ins[0].value=st.sets[s].kg??''; ins[1].value=st.sets[s].reps??''; ins[2].value=st.sets[s].rir??''; paintRir(ex,row,st.sets[s].rir); ins[0].addEventListener('input',e=>{st.sets[s].kg=e.target.value.trim(); afterChange(ex,st,c);}); ins[1].addEventListener('input',e=>{st.sets[s].reps=e.target.value.trim(); afterChange(ex,st,c);}); ins[1].addEventListener('change',()=>{ /* reps scritte e peso lasciato vuoto: vale il peso della volta scorsa (quello in grigio) */ if(st.sets[s].reps&&!st.sets[s].kg&&prev[s]?.kgTxt&&!serieACorpoLibero(ex,s)){ ins[0].value=prev[s].kgTxt; st.sets[s].kg=prev[s].kgTxt; afterChange(ex,st,c);} }); ins[2].addEventListener('input',e=>{st.sets[s].rir=e.target.value.trim(); paintRir(ex,row,st.sets[s].rir); afterChange(ex,st,c);}); }); }
     const rb=c.querySelector('[data-rir-info]'); if(rb) rb.onclick=()=>{ const h=c.querySelector('.rir-hint'); if(h) h.hidden=!h.hidden; };
     const sq=c.querySelector('[data-sugg-info]'); if(sq) sq.onclick=(e)=>{ e.stopPropagation(); const h=c.querySelector('.sugg-hint'); if(h) h.hidden=!h.hidden; };
     if(sg){
@@ -1992,7 +2009,7 @@
     }
     c.querySelector('.chk').onclick=(e)=>{ e.stopPropagation(); st.manual=!st.manual; afterChange(ex,st,c); };
     c.querySelector('.flagbtn').onclick=(e)=>{ e.stopPropagation(); openSegnala(ex.nome, st); };
-    c.querySelector('.card-top').onclick=()=>{ const aperta=c.classList.toggle('open'); if(aperta) delete st.chiuso; else st.chiuso=true; saveState(); };
+    c.querySelector('.card-top').onclick=()=>{ const aperta=c.classList.toggle('open'); if(aperta) st.aperta=true; else delete st.aperta; saveState(); };
     c.querySelectorAll('.tg-timer').forEach(btn=> btn.onclick=()=> startTimer(+btn.dataset.sec, btn.dataset.label));
     c.querySelectorAll('.set-work').forEach(btn=> btn.onclick=(e)=>{ e.stopPropagation(); const row=c.querySelectorAll('.set')[+btn.dataset.si]; avviaEsercizio(+btn.dataset.work, btn.dataset.label, row?.querySelectorAll('input')[1], +btn.dataset.rest); });
     const scEl=c.querySelector('.duo-stor');
