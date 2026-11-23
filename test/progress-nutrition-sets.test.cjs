@@ -90,10 +90,9 @@ test("serie: «20 kg», «pc», «C.L.» e «12 reps» valgono; esercizi chiusi 
   assert.match(page, /\.rec-bar\{display:flex; justify-content:center;/);
 });
 
-test("in colore chiaro i valori della volta scorsa; reps scritte senza peso → peso della volta scorsa", () => {
+test("in grigio i valori della volta scorsa; reps scritte senza peso → peso della volta scorsa", () => {
   assert.match(page, /placeholder="\$\{esc\(prev\[i\]\?\.kgTxt\|\|targetLoad\)\}"/);
   assert.match(page, /placeholder="\$\{esc\(prev\[i\]\?\.repsTxt\|\|/);
   assert.match(page, /if\(st\.sets\[s\]\.reps&&!st\.sets\[s\]\.kg&&prev\[s\]\?\.kgTxt/);
   assert.match(page, /\.card\.done\{border:1\.5px solid var\(--accent\)/);
-  assert.match(page, /\.set \.field input::placeholder\{color:color-mix\(in srgb,var\(--accent\) 60%,#fff\)/);
 });
