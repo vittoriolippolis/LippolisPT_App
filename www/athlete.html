@@ -198,7 +198,7 @@
   .tg-timer:active{transform:scale(.97);}
   /* Serie · Reps · RIR occupano tutta la riga, larghi quanto la barra del recupero sotto */
   .targets.targets-fill > *{flex:1 1 auto; text-align:center; justify-content:center;}
-  .prev-hint{font-size:11.5px; color:var(--muted); font-weight:600; margin:12px 0 -4px;}
+  .prev-hint{font-size:11.5px; color:color-mix(in srgb,var(--accent) 70%,#fff); font-weight:700; margin:12px 0 -4px;}
   .rec-bar{display:flex; justify-content:center; align-items:center; gap:9px; width:100%; margin-top:8px; padding:10px 14px; border-radius:11px; font-size:13px; font-weight:800; color:var(--accent-ink);}
   .rec-bar span{letter-spacing:.08em; text-transform:uppercase;}
   .rec-bar b{font-family:'Archivo',system-ui,sans-serif; font-weight:800; font-size:15px;}
@@ -258,7 +258,8 @@
   .set.lato-sx{margin-bottom:5px;}
   .set .field{flex:1; display:flex; align-items:center; gap:4px; background:var(--surface2); border:1px solid var(--line); border-radius:9px; padding:5px 8px;}
   .set .field input{flex:1; width:100%; background:transparent; border:0; outline:none; color:var(--text); font-family:'Archivo',system-ui,sans-serif; font-weight:700; font-size:14px;}
-  .set .field input::placeholder{color:var(--muted2); font-family:'Manrope',sans-serif; font-weight:600;}
+  /* valori della volta scorsa / della scheda: colore principale ma più chiaro, distinguibili da quelli scritti */
+  .set .field input::placeholder{color:color-mix(in srgb,var(--accent) 60%,#fff); font-family:'Manrope',sans-serif; font-weight:700; opacity:1;}
   .set .field span{font-size:11px; color:var(--muted2); font-weight:700;}
   .set .field:focus-within{border-color:var(--accent); background:var(--surface);}
   .set .f-rir{flex:0 0 62px;}
@@ -1948,7 +1949,7 @@
     if(hasSets){
       const typeLabel={warmup:'Riscaldamento',working:'Lavoro',top:'Top set',back_off:'Back-off',drop:'Drop',mini_set:'Mini-set',cluster_group:'Gruppo',failure:'Cedimento'};
       const setCount=slotCount(ex,st);
-      sets=`${prev.some(Boolean)?'<div class="prev-hint">In grigio: quello che hai fatto la volta scorsa</div>':''}<div class="set-labels"><span></span><span>Peso (kg)</span><span>${ex.unita==='sec'?'Secondi':'Ripetizioni'}</span><span>RIR</span></div><div class="sets">`;
+      sets=`${prev.some(Boolean)?'<div class="prev-hint">In colore chiaro: quello che hai fatto la volta scorsa</div>':''}<div class="set-labels"><span></span><span>Peso (kg)</span><span>${ex.unita==='sec'?'Secondi':'Ripetizioni'}</span><span>RIR</span></div><div class="sets">`;
       for(let s=1;s<=setCount;s++){
         const i=s-1, k=uni?Math.ceil(s/2):s, prescribed=ex.prescriptions&&ex.prescriptions[i], targetReps=ex.repsSerie?.[i]||ex.reps||'', targetLoad=ex.carichiSerie?.[i]||ex.carico||'';
         const targetType=prescribed?typeLabel[prescribed.set_type]||'Lavoro':'';
