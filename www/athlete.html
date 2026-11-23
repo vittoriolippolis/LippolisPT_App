@@ -480,6 +480,11 @@
   #execModal .em-card{max-width:560px;max-height:90%;overflow:auto}
   .em-frame iframe,.em-frame video{border:0;width:100%;height:100%;position:absolute;inset:0;object-fit:contain}
   .em-cap a{color:var(--accent-ink);font-weight:800}.em-notes{white-space:pre-wrap;text-align:left;margin:0 0 8px;line-height:1.55}
+  .pdf-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin:16px 0 4px;padding:13px 16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:700 14px 'Manrope',system-ui,sans-serif;cursor:pointer;box-shadow:var(--shadow-card);}
+  .pdf-btn svg{width:18px;height:18px;color:var(--accent-ink);}
+  .pdf-btn:disabled{opacity:.65;cursor:wait;}
+  .pdf-status{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 8px;min-height:1em;}
+  .pdf-status:empty{display:none;}
   .nd-plan{font:800 13px 'Archivo',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:2px 2px 10px;}
   .nd-day{--m-carb:#B0952F;--m-prot:#3F6178;--m-fat:#7A2A80;background:var(--surface);border:1px solid var(--line-soft);border-radius:18px;margin:0 0 12px;box-shadow:var(--shadow-card);overflow:hidden;}
   html[data-tema="scuro"] .nd-day{--m-carb:#D4B44A;--m-prot:#7FA6C2;--m-fat:#C27BC8;}
@@ -1762,7 +1767,8 @@
           <button type="button" class="hbtn" id="startWorkout">${I.play} ${dayStarted(next)?'Riprendi allenamento':'Inizia allenamento'}</button>
         </section>`
       :`<section class="program-panel"><h2 class="program-title">${giorni.length?'Settimana completata':'Nessuna seduta questa settimana'}</h2>${giorni.length?'<div class="program-empty">Apri la settimana qui sotto per rivedere gli allenamenti.</div>':''}</section>`;
-    view.innerHTML=`${heading}<p class="program-caption">${esc(context)}</p>${hero}${renderProgramWeeks(activeWeek)}`;
+    view.innerHTML=`${heading}<p class="program-caption">${esc(context)}</p>${hero}${renderProgramWeeks(activeWeek)}${pdfButton('workout','Scarica la scheda in PDF')}`;
+    bindPdfButton();
     const start=document.getElementById('startWorkout');
     if(start)start.onclick=()=>openDay(next);
     view.querySelectorAll('[data-week]').forEach(b=>b.onclick=()=>{
@@ -2368,6 +2374,32 @@
   }
 
   // ====== CONSIGLI ALIMENTARI ======
+  // ====== PDF ======
+  // Scheda e consigli alimentari esportabili in PDF (A4): nel telefono si condividono/salvano, nel browser si scaricano.
+  function pdfButton(kind,label){ return `<button type="button" class="pdf-btn" data-pdf="${kind}">${I.download}<span>${label}</span></button><p class="pdf-status" role="status"></p>`; }
+  function bindPdfButton(){
+    view.querySelectorAll('[data-pdf]').forEach(btn=>btn.onclick=async()=>{
+      const status=btn.nextElementSibling, label=btn.querySelector('span'), testo=label.textContent;
+      btn.disabled=true; label.textContent='Preparo il PDF…'; if(status)status.textContent='';
+      try{
+        const pdf=await import('./src/pdf-export.mjs');
+        const cliente=[profilo.nome,profilo.cognome].filter(Boolean).join(' ');
+        const doc=await pdf.newPdf();
+        let nome;
+        if(btn.dataset.pdf==='workout'){
+          const model=pdf.workoutPdfModel(PROGRAMMA,{cliente,isUnilat,fmtRec:ex=>{ if(ex.cardio||ex.timed) return ex.rec?fmtT(toSec(ex.rec)):'-'; const r=recEff(ex); return r?fmtT(r):'-'; }});
+          pdf.drawWorkoutPdf(doc,model); nome=pdf.pdfFileName('Scheda',model.titolo);
+        }else{
+          const model=pdf.nutritionPdfModel(coachSections.nutrition?.plan,{cliente});
+          pdf.drawNutritionPdf(doc,model); nome=pdf.pdfFileName('Consigli alimentari',model.titolo);
+        }
+        const how=await pdf.deliverPdf(doc,nome);
+        if(status?.isConnected)status.textContent=how==='saved'?`Scaricato: ${nome}`:'';
+      }catch(e){
+        if(status?.isConnected&&!/cancel|annull|abort/i.test(String(e?.message||e)))status.textContent=e?.message||'Esportazione non riuscita. Riprova.';
+      }finally{ btn.disabled=false; label.textContent=testo; }
+    });
+  }
   // Giorni del piano a fisarmonica (come CoachPlus): tutti i giorni in elenco, ognuno con le sue calorie;
   // aperto mostra torta dei macro, pasti e quantità. Gli altri giorni restano sempre raggiungibili.
   let consigliAperti=new Set();
@@ -2404,7 +2436,8 @@
           </div>`:''}
         </section>`;
       }).join('');
-      view.innerHTML=`<div class="pagetitle">Consigli alimentari</div><div class="nd-plan">${esc(assigned.nome||'Piano alimentare')}</div>${assigned.descrizione?`<p class="nutrition-notes">${esc(assigned.descrizione)}</p>`:''}${days||'<div class="nodata">Il piano non contiene giorni.</div>'}`;
+      view.innerHTML=`<div class="pagetitle">Consigli alimentari</div><div class="nd-plan">${esc(assigned.nome||'Piano alimentare')}</div>${assigned.descrizione?`<p class="nutrition-notes">${esc(assigned.descrizione)}</p>`:''}${days||'<div class="nodata">Il piano non contiene giorni.</div>'}${giorni.length?pdfButton('nutrition','Scarica i consigli in PDF'):''}`;
+      bindPdfButton();
       view.querySelectorAll('[data-nd-day]').forEach(btn=>btn.onclick=()=>{
         const i=+btn.dataset.ndDay, y=view.scrollTop;
         if(consigliAperti.has(i)) consigliAperti.delete(i); else consigliAperti.add(i);
