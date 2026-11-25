@@ -6,7 +6,7 @@ const vm = require("node:vm");
 
 const page = fs.readFileSync(path.resolve(__dirname, "../www/athlete.html"), "utf8");
 const a = page.indexOf("  const DISCO_MIN="), b = page.indexOf("  function suggSets(");
-const lib = vm.runInNewContext(page.slice(a, b) + "\n({upKg,downKg,fmtKgS,tecnica1,parseTarget})");
+const lib = vm.runInNewContext(page.slice(a, b) + "\n({upKg,downKg,fmtKgS,tecnica1,tecnica1Base,parseTarget})");
 const seq = (range, ...sets) => sets.map(([kg, reps]) => ({ kg, reps, t: lib.parseTarget(range) }));
 const plain = (out) => JSON.parse(JSON.stringify(out.map((s) => [s.dir, s.kg])));
 
@@ -45,4 +45,10 @@ test("carico nuovo non chiuso: 1 rep sotto → riprova; 2+ sotto → torna al ca
 test("niente più riga «In grigio…» sopra le serie", () => {
   assert.doesNotMatch(page, /In grigio: quello che hai fatto/);
   assert.match(page, /if\(mode==='range'\)\{/);
+});
+
+test("screen del 25/11: serie in calo 30×10 · 25×11 · 22,5×11 · 22,5×10 → nessun salto al carico della prima", () => {
+  assert.deepEqual(plain(lib.tecnica1(seq("10-12", [30, 10], [25, 11], [22.5, 11], [22.5, 10]))), [["keep", 30], ["up", 26.25], ["up", 23.75], ["up", 23.75]]);
+  assert.deepEqual(plain(lib.tecnica1(seq("10-12", [30, 10], [25, 9], [22.5, 8]))), [["keep", 30], ["keep", 25], ["keep", 22.5]]);
+  assert.deepEqual(plain(lib.tecnica1(seq("10-12", [30, 12], [28.75, 10]))), [["keep", 30], ["up", 30]]);
 });

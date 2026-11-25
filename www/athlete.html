@@ -1836,6 +1836,24 @@
   // (3ª, poi 4ª, poi anche la 1ª). Quando tutte le serie sono al carico nuovo si riparte: 2ª serie su.
   // Serie col carico nuovo lontana dal range (2+ reps sotto) → torna al carico di prima e cerca una rep in più (Tecnica 2).
   function tecnica1(seq){
+    const out=tecnica1Base(seq);
+    // Serie fatte più leggere della prima (carichi in calo per la fatica): non si salta al carico della prima.
+    // Chiusa → un disco sopra il suo carico (fino a quello della prima); non chiusa → stesso carico.
+    // In ogni caso nessuna serie sale più di un passo rispetto a quello che ha fatto la volta scorsa.
+    const base=seq[0].kg;
+    seq.forEach((r,k)=>{
+      if(k===0) return;
+      if(r.kg<base-1e-9){
+        out[k]=r.reps>=r.t.lo
+          ? {dir:'up',kg:Math.min(upKg(r.kg),base),why:`chiusa a ${fmtKgS(r.kg)} kg: sali di poco, verso il carico della prima serie`}
+          : {dir:'keep',kg:r.kg,why:`${r.reps}/${r.t.lo} a ${fmtKgS(r.kg)} kg: stesso carico, chiudi le ripetizioni`};
+      }
+      const tetto=upKg(r.kg);
+      if(out[k].kg>tetto+1e-9) out[k]={...out[k],dir:'up',kg:tetto};
+    });
+    return out;
+  }
+  function tecnica1Base(seq){
     const base=seq[0].kg, H=Math.max(...seq.map(r=>r.kg)), out=[];
     const chiusa=r=>r.reps>=r.t.lo, pesante=r=>r.kg>=H-1e-9;
     if(H<=base+1e-9){
