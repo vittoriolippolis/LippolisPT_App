@@ -844,7 +844,9 @@
 
     <div class="tabbar" id="tabbar"></div>
     <div class="password-modal" id="athletePasswordModal" aria-hidden="true">
-      <div class="password-dialog" role="dialog" aria-modal="true" aria-labelledby="athletePasswordTitle">
+      <form class="password-dialog" role="dialog" aria-modal="true" aria-labelledby="athletePasswordTitle" onsubmit="return false">
+        <!-- Il gestore password del telefono deve vedere qui l'account: senza, scambia i campi dell'allenamento per un login -->
+        <input type="email" id="athletePasswordUser" autocomplete="username" tabindex="-1" aria-hidden="true" readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
         <h2 id="athletePasswordTitle">Cambia password</h2>
         <p>Conferma la password attuale e scegli una nuova password di almeno 12 caratteri.</p>
         <div class="pf-field"><label for="athleteCurrentPassword">Password attuale</label><input class="pf-input" id="athleteCurrentPassword" type="password" autocomplete="current-password"></div>
@@ -852,7 +854,7 @@
         <div class="pf-field"><label for="athleteConfirmPassword">Ripeti la nuova password</label><input class="pf-input" id="athleteConfirmPassword" type="password" autocomplete="new-password"></div>
         <div class="password-feedback" id="athletePasswordFeedback" role="status" aria-live="polite"></div>
         <div class="sg-acts"><button class="ann" type="button" onclick="window.lippolisClosePassword()">Annulla</button><button class="inv" id="athleteSavePassword" type="button">Aggiorna password</button></div>
-      </div>
+      </form>
     </div>
   </div>
 
@@ -2021,7 +2023,7 @@
         const label=esc(slotLabel(ex,i));
         const rest=Number(prescribed?.rest_seconds);
         const workSec=ex.unita==='sec'?secondiTarget(targetReps):0;
-        sets+=`<div class="set${uni?' lato-'+LATI[(s-1)%2].toLowerCase():''}"><div class="sl">SERIE ${k}${uni?'<small>'+LATI[(s-1)%2]+'</small>':''}${targetSummary?`<small class="set-prescription">${esc(targetSummary)}</small>`:''}</div><div class="field"><input type="text" inputmode="decimal" aria-label="Peso serie ${label}" placeholder="${esc(prev[i]?.kgTxt||targetLoad)}"><span>${ex.perLato?'kg/lato':'kg'}</span></div><div class="field"><input type="text" inputmode="decimal" aria-label="${ex.unita==='sec'?'Secondi':'Ripetizioni'} serie ${label}" placeholder="${esc(prev[i]?.repsTxt||String(targetReps).replace(/s$/i,''))}"><span>${ex.unita==='sec'?'sec':'reps'}</span></div><div class="field f-rir"><input type="number" inputmode="numeric" min="0" max="10" aria-label="RIR serie ${label}" placeholder="${esc(prescribed?.target_rir??ex.rir??'')}"><span>RIR</span></div>${workSec>0?`<button type="button" class="tg set-work" data-work="${workSec}" data-si="${i}" data-label="${esc(ex.nome)} · Serie ${label}" data-rest="${Number.isFinite(rest)&&rest>0?rest:(recEff(ex)||0)}" aria-label="Avvia timer esercizio serie ${label}">${I.stopwatch} ${fmtT(workSec)}</button>`:''}${Number.isFinite(rest)&&rest>0?`<button type="button" class="tg tg-timer set-rest" data-sec="${rest}" data-label="Recupero serie ${label}" aria-label="Avvia recupero serie ${label}">${I.play} ${fmtT(rest)}</button>`:''}</div>`;
+        sets+=`<div class="set${uni?' lato-'+LATI[(s-1)%2].toLowerCase():''}"><div class="sl">SERIE ${k}${uni?'<small>'+LATI[(s-1)%2]+'</small>':''}${targetSummary?`<small class="set-prescription">${esc(targetSummary)}</small>`:''}</div><div class="field"><input type="text" inputmode="decimal" autocomplete="off" name="kg-${i}" aria-label="Peso serie ${label}" placeholder="${esc(prev[i]?.kgTxt||targetLoad)}"><span>${ex.perLato?'kg/lato':'kg'}</span></div><div class="field"><input type="text" inputmode="decimal" autocomplete="off" name="reps-${i}" aria-label="${ex.unita==='sec'?'Secondi':'Ripetizioni'} serie ${label}" placeholder="${esc(prev[i]?.repsTxt||String(targetReps).replace(/s$/i,''))}"><span>${ex.unita==='sec'?'sec':'reps'}</span></div><div class="field f-rir"><input type="number" inputmode="numeric" min="0" max="10" autocomplete="off" name="rir-${i}" aria-label="RIR serie ${label}" placeholder="${esc(prescribed?.target_rir??ex.rir??'')}"><span>RIR</span></div>${workSec>0?`<button type="button" class="tg set-work" data-work="${workSec}" data-si="${i}" data-label="${esc(ex.nome)} · Serie ${label}" data-rest="${Number.isFinite(rest)&&rest>0?rest:(recEff(ex)||0)}" aria-label="Avvia timer esercizio serie ${label}">${I.stopwatch} ${fmtT(workSec)}</button>`:''}${Number.isFinite(rest)&&rest>0?`<button type="button" class="tg tg-timer set-rest" data-sec="${rest}" data-label="Recupero serie ${label}" aria-label="Avvia recupero serie ${label}">${I.play} ${fmtT(rest)}</button>`:''}</div>`;
       }
       sets+=`</div><div class="set-btns"><button type="button" class="add-set-btn">+ Aggiungi serie</button>${setCount>(uni?2:1)?'<button type="button" class="del-set-btn">− Togli serie</button>':''}</div>`;
     }
