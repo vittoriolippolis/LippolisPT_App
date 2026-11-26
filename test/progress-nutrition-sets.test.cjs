@@ -97,3 +97,10 @@ test("in grigio i valori della volta scorsa; reps scritte senza peso → peso de
   assert.match(page, /\.card\.done\{border:1\.5px solid var\(--accent\)/);
   assert.match(page, /\.card\.done :is\(\.tg,\.set \.field,/);
 });
+
+test("campi delle serie senza riempimento automatico; le password di «Cambia password» stanno in un form col loro account", () => {
+  assert.match(page, /autocomplete="off" name="kg-\$\{i\}"/);
+  assert.match(page, /autocomplete="off" name="reps-\$\{i\}"/);
+  assert.match(page, /autocomplete="off" name="rir-\$\{i\}"/);
+  assert.match(page, /<form class="password-dialog"[^>]*>\s*<!--[^]*?-->\s*<input type="email" id="athletePasswordUser" autocomplete="username"/);
+});

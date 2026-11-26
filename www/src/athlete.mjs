@@ -209,6 +209,8 @@ async function bootstrap(session) {
   sessionStorage.setItem(markerKey, marker);
   if (!sameSnapshot(merged, remote)) pendingSnapshot = mergeQueuedSnapshot(remote, merged);
 
+  const passwordUser = document.getElementById("athletePasswordUser");
+  if (passwordUser) passwordUser.value = user.email || profile.email || "";
   // «Cambia account»: il tasto compare solo se su questo dispositivo c'è un altro account salvato.
   rememberAccount(profile, user).then(() => {
     const button = document.getElementById("accountSwitch");
