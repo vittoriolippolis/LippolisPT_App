@@ -170,8 +170,10 @@ test("niente spiegazioni, storico sessioni a tabelle, foto clienti e sfondo colo
   assert.match(coach, /data-avatar="'\+escapeHTML\(c\.id\|\|''\)\+'"/);
   assert.match(mock, /snapshot->profilo->>foto/);
   assert.match(mock, /PHOTO_RX=\/\^data:image/);
-  assert.match(coach, /body::before\{[^}]*url\("sfondo\.jpg"\)/);
-  assert.match(athlete, /\.phone\{[^}]*url\("sfondo\.jpg"\)/);
+  // 28/11/2026: la foto della palestra resta solo nella pagina di accesso.
+  assert.doesNotMatch(coach, /sfondo\.jpg/);
+  assert.doesNotMatch(athlete, /sfondo\.jpg/);
+  assert.match(read("index.html"), /url\("sfondo\.jpg"\)/);
   assert.ok(fs.existsSync(path.join(__dirname, "..", "www", "sfondo.jpg")));
 });
 

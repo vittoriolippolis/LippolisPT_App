@@ -131,6 +131,7 @@ test("lo storico atleta mostra i nomi come testo e tratta le serie malformate co
     fmtKgIt: value => String(value), document: { getElementById: () => ({}) }
   });
   vm.runInContext([
+    source("  function titoloGiorno(", "  function card("),
     source("  function valoreSerie(", "  function leggiSerie("),
     source("  function savedSetLabel(", "  function storicoSessionsHTML("),
     source("  function esc(v)", "  const biaDateFormat"),
