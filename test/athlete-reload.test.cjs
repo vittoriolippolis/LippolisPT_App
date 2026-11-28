@@ -64,7 +64,7 @@ async function startAthlete({ onSave, getState, getProgram } = {}) {
     }
   };
   const context = vm.createContext({
-    window, supabase, supabaseConfigured: true, structuredClone,
+    window, supabase, supabaseConfigured: true, structuredClone, preparaTecniche: (program) => program,
     document: { getElementById: () => null, addEventListener() {} },
     localStorage: { getItem: () => JSON.stringify(snapshot) },
     sessionStorage: { getItem: (key) => sessionStorage.get(key), setItem: (key, value) => sessionStorage.set(key, value) },

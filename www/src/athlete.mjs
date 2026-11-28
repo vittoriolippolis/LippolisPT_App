@@ -1,7 +1,8 @@
 import { supabase, supabaseConfigured } from "./supabase.mjs";
 import { friendlyAuthError, getAuthorizedSession, logout } from "./auth.mjs";
 import { watchAthleteNutrition } from "./nutrition-athlete.mjs";
-import { toAthleteProgram } from "./workout-metrics.mjs?v=20261113-program-v6";
+import { toAthleteProgram } from "./workout-metrics.mjs?v=20261128-multiserie";
+import { preparaTecniche } from "./tecniche.mjs?v=20261128-multiserie";
 import { markChatRead } from "./chat.mjs";
 import { openAccountMenu, otherSavedAccounts, rememberAccount } from "./account-switch.mjs";
 import { createNotifications } from "./notifications.mjs";
@@ -93,7 +94,8 @@ function normalizePublishedProgram(value) {
     }) : [];
     return { ...week, n: week.n || index + 1, dal: from || "", al: to || "", giorni: normalizedDays };
   });
-  return { ...program, nome: program.nome || program.name || "Scheda", dal: program.dal || program.startDate || "", al: program.al || program.endDate || "", settimane: normalizedWeeks };
+  // Multiserie e tecniche d'intensità per serie (dalla scheda del pannello o dalle frasi standard nelle note).
+  return preparaTecniche({ ...program, nome: program.nome || program.name || "Scheda", dal: program.dal || program.startDate || "", al: program.al || program.endDate || "", settimane: normalizedWeeks });
 }
 function mergeRemote(remoteState, currentProgram, profile, preferLocal = false) {
   const local = localData(); const merged = preferLocal ? mergeQueuedSnapshot(remoteState, local) : mergeQueuedSnapshot(local, remoteState);

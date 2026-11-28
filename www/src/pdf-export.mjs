@@ -1,6 +1,16 @@
 // Esporta in PDF la scheda di allenamento e i consigli alimentari del cliente.
 // jsPDF è incluso nel sito (www/vendor) e si carica solo al primo export: funziona anche offline nell'APK.
 
+// Tecniche per serie (dal pannello) che la nota del PT non nomina già: «Serie 4: Stripping · 2 scarichi −20%».
+function tecnicheNota(ex) {
+  const note = String(ex?.note || "").toLocaleLowerCase("it");
+  return (Array.isArray(ex?.tecniche) ? ex.tecniche : []).map((tec, i) => {
+    const testo = String(tec?.testo || "");
+    const nome = testo.split(" · ")[0].toLocaleLowerCase("it");
+    return testo && !note.includes(nome) ? `Serie ${i + 1}: ${testo}` : "";
+  }).filter(Boolean).join("\n");
+}
+
 const BRAND = [18, 199, 162];      // #12C7A2
 const INK = [19, 33, 31];          // #13211F
 const MUTED = [99, 113, 110];
@@ -8,12 +18,12 @@ const SOFT = [232, 248, 244];
 const LINE = [220, 229, 226];
 
 // I font standard dei PDF coprono solo l'alfabeto occidentale: niente emoji o simboli rari.
-const SOSTITUZIONI = { "’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-", "…": "...", "″": '"', "′": "'", "≈": "~", "→": "->", "•": "·", " ": " ", " ": " " };
+const SOSTITUZIONI = { "’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-", "−": "-", "…": "...", "″": '"', "′": "'", "≈": "~", "→": "->", "•": "·", " ": " ", " ": " " };
 export function pdfText(value) {
   return String(value ?? "").replace(/[^\x00-\xff]/g, (c) => SOSTITUZIONI[c] ?? "").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "").trim();
 }
 
-const firma = (week) => JSON.stringify((week?.giorni || []).map((g) => [g.titolo, (g.esercizi || []).map((e) => [e.nome, e.serie, e.reps, e.repsSerie, e.rec, e.rir, e.carico, e.carichiSerie, e.note, e.tempo])]));
+const firma = (week) => JSON.stringify((week?.giorni || []).map((g) => [g.titolo, (g.esercizi || []).map((e) => [e.nome, e.serie, e.reps, e.repsSerie, e.rec, e.rir, e.carico, e.carichiSerie, e.note, e.tempo, (e.tecniche || []).map((x) => x?.testo || "")])]));
 const elenco = (list) => (Array.isArray(list) && list.some((v) => v !== "" && v != null) ? list.map((v) => (v === "" || v == null ? "-" : v)).join(" / ") : "");
 
 // Scheda → modello da stampare. Settimane consecutive identiche diventano un solo blocco («Settimane 1-4»).
@@ -40,7 +50,7 @@ export function workoutPdfModel(program, { cliente = "", fmtRec = (ex) => String
           const timed = ex.cardio || ex.timed;
           return {
             n: pdfText(ex.badge || ei + 1),
-            gruppo: ex.ss ? pdfText({ superset: "Superset", giant_set: "Giant set", circuit: "Circuito" }[ex.ssType] || "Superset") : "",
+            gruppo: ex.ss || ex.ssType === "multiset" ? pdfText({ superset: "Superset", giant_set: "Giant set", circuit: "Circuito", multiset: "Multiserie" }[ex.ssType] || "Superset") : "",
             ss: ex.ss || "",
             nome: pdfText(ex.nome),
             muscolo: pdfText(ex.muscolo || ""),
@@ -49,7 +59,7 @@ export function workoutPdfModel(program, { cliente = "", fmtRec = (ex) => String
             rec: pdfText(fmtRec(ex) || "-"),
             rir: pdfText(ex.rirTxt ?? ex.rir ?? "-"),
             carico: pdfText(elenco(ex.carichiSerie) || ex.carico || "-"),
-            note: pdfText(ex.note || "")
+            note: pdfText([ex.note || "", tecnicheNota(ex)].filter(Boolean).join("\n"))
           };
         })
       }))
