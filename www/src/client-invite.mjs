@@ -3,6 +3,8 @@ import { clientInviteCall, supabase } from "./supabase.mjs";
 const form = document.getElementById("registration");
 const status = document.getElementById("inviteStatus");
 const token = new URLSearchParams(location.hash.slice(1)).get("token");
+const birth = form.querySelector('[name="birthDate"]');
+if (birth) { const d = new Date(); d.setFullYear(d.getFullYear() - 10); birth.max = d.toLocaleDateString("sv-SE"); }
 
 async function checkInvite() {
   try {

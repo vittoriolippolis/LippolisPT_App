@@ -29,12 +29,12 @@ Deno.serve(async (request) => {
     if (payload.action === "check") return json(200, { valid: true });
     if (payload.action !== "register") return json(400, { error: "Azione non valida." });
     let input;
-    try { input = validateClientRegistration(payload); }
+    try { input = validateClientRegistration(payload, { requireBirthDate: true }); }
     catch (error) { return json(400, { error: (error as Error).message }); }
     const { data, error } = await admin.auth.admin.createUser({
       email: input.email, password: input.password, email_confirm: true,
       app_metadata: { lippolis_invite: hash },
-      user_metadata: { first_name: input.firstName, last_name: input.lastName }
+      user_metadata: { first_name: input.firstName, last_name: input.lastName, birth_date: input.birthDate }
     });
     if (error || !data.user) {
       const { data: stillAvailable } = await admin.rpc("client_invite_available", { p_hash: hash });

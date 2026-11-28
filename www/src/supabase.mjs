@@ -31,7 +31,8 @@ export function profileFromRow(row) {
     onboardingComplete: row.onboarding_complete,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    suspendedAt: row.suspended_at
+    suspendedAt: row.suspended_at,
+    birthDate: row.birth_date || null
   };
 }
 

@@ -474,6 +474,20 @@
   .program-day .pd-name{font:600 14px 'Archivo',system-ui,sans-serif;color:var(--text);}
   .program-day .pd-meta{font-size:11px;color:var(--muted);margin-top:3px;}
   .program-day .pd-date{color:var(--accent-ink);}
+  /* promemoria data di nascita */
+  .nascita-card{display:flex; align-items:center; gap:12px; width:100%; margin:0 0 14px; padding:12px 14px; border:1px solid var(--accent); border-radius:14px; background:var(--accent-soft); color:var(--text); text-align:left; font:inherit; cursor:pointer; -webkit-appearance:none; appearance:none;}
+  .nascita-card .nc-i{flex:0 0 34px; height:34px; border-radius:10px; display:grid; place-items:center; background:var(--accent); color:var(--on-accent);}
+  .nascita-card .nc-i svg{width:18px; height:18px;}
+  .nascita-card .nc-t{flex:1; min-width:0;}
+  .nascita-card .nc-t b{display:block; font-size:14px; font-weight:600;}
+  .nascita-card .nc-t small{display:block; font-size:12px; color:var(--muted); margin-top:2px;}
+  .nascita-card .nc-go{color:var(--accent-ink);}
+  .nascita-card .nc-go svg{width:16px; height:16px;}
+  .pf-field.da-completare .pf-input{border-color:var(--accent);}
+  .pf-field .pf-hint{display:block; font-size:12px; color:var(--accent-ink); margin-top:6px;}
+  .pf-field.evidenzia .pf-input{animation:evidenziaCampo 1.6s var(--ease,ease) 1;}
+  @keyframes evidenziaCampo{0%,40%{background:var(--accent-soft)}100%{background:var(--surface)}}
+  @media (prefers-reduced-motion:reduce){.pf-field.evidenzia{animation:none}}
   .program-day .pd-open{flex:0 0 auto;border:0;border-radius:10px;background:var(--accent);color:var(--on-accent);padding:9px 11px;font:600 11px 'Archivo',system-ui,sans-serif;cursor:pointer;}
   .program-empty{padding:12px;border-radius:12px;background:var(--surface2);color:var(--muted);font-size:13px;line-height:1.45;}
   @media(max-width:360px){.physical-grid{gap:5px}.physical-metric{padding-inline-start:5px}.physical-metric .pm-value{font-size:14px}.program-day{gap:8px;padding:10px}.program-day .pd-open{padding:8px}}
@@ -1475,6 +1489,10 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const d=new Date(w.dal+'T12:00:00'); d.setDate(d.getDate()+((idx-((d.getDay()+6)%7))+7)%7);
     return fmtData(d.getTime());
   }
+  // Data di nascita del cliente (la chiede la registrazione; chi era già iscritto la completa dal Profilo).
+  function mancaNascita(){ const p=window.__LIPPOLIS_PROFILE__; return !!(p&&p.id&&!p.birthDate); }
+  function maxNascita(){ const d=new Date(); d.setFullYear(d.getFullYear()-10); return d.toLocaleDateString('sv-SE'); }
+  function vaiNascita(){ showTab('profilo'); requestAnimationFrame(()=>{ const f=document.getElementById('pfNascita'); if(f){ f.closest('.pf-field')?.classList.add('evidenzia'); f.focus(); } }); }
   const NAV = [
     {id:'workout',  label:'Workout',             icon:I.dumbbell},
     {id:'consigli', label:'Consigli alimentari', icon:I.cutlery},
@@ -1485,7 +1503,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function renderNav(){
     tabbarEl.innerHTML='';
     NAV.filter(n=>tabVisibile(n.id)).forEach(n=>{ const t=document.createElement('div'); t.className='tab'+(n.id===activeTab?' active':'');
-      const nb=(n.id==='coach' && activeTab!=='coach') ? unreadCoach() : 0;
+      const nb=(n.id==='coach' && activeTab!=='coach') ? unreadCoach() : (n.id==='profilo'&&mancaNascita()) ? 1 : 0;
       t.innerHTML=`${n.icon}<span>${n.label}</span>${nb?`<span class="nb">${nb}</span>`:''}`;
       t.onclick=()=>showTab(n.id); tabbarEl.appendChild(t); });
   }
@@ -2015,8 +2033,10 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
           <button type="button" class="hbtn" id="startWorkout">${I.play} ${dayStarted(next)?'Riprendi allenamento':'Inizia allenamento'}</button>
         </section>`
       :`<section class="program-panel"><h2 class="program-title">${giorni.length?'Settimana completata':'Nessuna seduta questa settimana'}</h2>${giorni.length?'<div class="program-empty">Apri la settimana qui sotto per rivedere gli allenamenti.</div>':''}</section>`;
-    view.innerHTML=`${heading}<p class="program-caption">${esc(context)}</p>${hero}${renderProgramWeeks(activeWeek)}${pdfButton('workout','Scarica la scheda in PDF')}`;
+    const nascita=mancaNascita()?`<button type="button" class="nascita-card" id="nascitaCard"><span class="nc-i">${I.user}</span><span class="nc-t"><b>Aggiungi la tua data di nascita</b><small>Ti basta un attimo: tocca qui per inserirla nel Profilo.</small></span><span class="nc-go">${I.chevR}</span></button>`:'';
+    view.innerHTML=`${heading}<p class="program-caption">${esc(context)}</p>${nascita}${hero}${renderProgramWeeks(activeWeek)}${pdfButton('workout','Scarica la scheda in PDF')}`;
     bindPdfButton();
+    const nc=document.getElementById('nascitaCard'); if(nc) nc.onclick=vaiNascita;
     const start=document.getElementById('startWorkout');
     if(start)start.onclick=()=>openDay(next);
     view.querySelectorAll('[data-week]').forEach(b=>b.onclick=()=>{
@@ -3553,6 +3573,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       ${foto?'<button type="button" class="pf-foto-via" id="pfFotoVia">Rimuovi foto</button>':''}
       <div class="pf-field"><label>Nome</label><input class="pf-input" id="pfNome" value="${esc(profilo.nome)}" autocomplete="given-name"></div>
       <div class="pf-field"><label>Cognome</label><input class="pf-input" id="pfCogn" value="${esc(profilo.cognome)}" autocomplete="family-name"></div>
+      <div class="pf-field${mancaNascita()?' da-completare':''}"><label for="pfNascita">Data di nascita</label><input class="pf-input" id="pfNascita" type="date" min="1900-01-01" max="${maxNascita()}" autocomplete="bday" value="${esc(window.__LIPPOLIS_PROFILE__?.birthDate||'')}">${mancaNascita()?'<small class="pf-hint">Da completare: il tuo coach la usa per farti gli auguri.</small>':''}</div>
       <div class="pf-field"><label>Lingua</label><div class="pf-input sel">Italiano 🇮🇹 <span class="chev">▼</span></div></div>
       <button class="btn-accent" id="save">Salva</button>
       <div class="pf-save-status" id="profileSaveStatus" role="status" aria-live="polite"></div>
@@ -3596,10 +3617,14 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       sv.disabled=true; sv.textContent='Salvataggio…'; status.textContent=''; status.classList.remove('error');
       try{
         if(!window.lippolisAccount||!window.lippolisAccount.updateProfile) throw new Error('Connessione account non pronta. Riprova tra qualche secondo.');
+        const nascita=document.getElementById('pfNascita').value, prima=window.__LIPPOLIS_PROFILE__?.birthDate||'';
+        if(nascita&&(nascita<'1900-01-01'||nascita>maxNascita())) throw new Error('Controlla la data di nascita.');
         await window.lippolisAccount.updateProfile({nome:first,cognome:last});
+        if(nascita&&nascita!==prima) await window.lippolisAccount.setBirthDate(nascita);
         profilo.nome=first; profilo.cognome=last; saveStateNow(); aggiornaAvatar();
         const av=view.querySelector('.pf-avatar .av'); if(av) av.firstChild.textContent=iniziali();
-        sv.textContent='✓ Salvato'; status.textContent='Nome e cognome aggiornati sul tuo account.';
+        sv.textContent='✓ Salvato'; status.textContent=nascita&&nascita!==prima?'Dati aggiornati, compresa la data di nascita.':'Nome e cognome aggiornati sul tuo account.';
+        renderNav(); const campo=document.getElementById('pfNascita')?.closest('.pf-field'); if(campo&&!mancaNascita()){ campo.classList.remove('da-completare','evidenzia'); campo.querySelector('.pf-hint')?.remove(); }
       }catch(error){ sv.textContent='Errore'; status.textContent=error.message||'Non è stato possibile salvare i dati. Riprova.'; status.classList.add('error'); }
       finally{ setTimeout(()=>{ if(sv.isConnected){ sv.disabled=false; sv.textContent='Salva'; } },1800); }
     };
@@ -3799,6 +3824,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     addBiaRecord: (record)=>{ if(!record||typeof record!=='object') throw new Error('Rilevazione BIA non valida.'); biaRecords.push(record); saveStateNow(); return record; },
     openChat: ()=>showTab('coach'),
     openWorkout: ()=>showTab('workout'),
+    openProfilo: ()=>vaiNascita(),
     setProgressPhotoOwner: uid=>{
       progressPhotoOwner=uid;
       if(activeTab==='altro'&&altroDetail==='Progressi fisici')renderProgressi();

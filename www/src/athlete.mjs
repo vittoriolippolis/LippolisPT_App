@@ -230,9 +230,16 @@ async function bootstrap(session) {
       const { data, error } = await supabase.from("profiles").update({ first_name: first, last_name: last, display_name: displayName, updated_at: new Date().toISOString() }).eq("id", user.uid).select("id, first_name, last_name, display_name").single();
       if (error) throw error;
       if (!data || data.id !== user.uid) throw new Error("Il profilo non è stato aggiornato. Ricarica la pagina e riprova.");
-      window.__LIPPOLIS_PROFILE__ = { ...profile, firstName: data.first_name, lastName: data.last_name, displayName: data.display_name };
+      window.__LIPPOLIS_PROFILE__ = { ...profile, ...window.__LIPPOLIS_PROFILE__, firstName: data.first_name, lastName: data.last_name, displayName: data.display_name };
       const identityName = document.querySelector("#athleteIdentity b");
       if (identityName) identityName.textContent = data.display_name || `${data.first_name} ${data.last_name}`.trim();
+      return window.__LIPPOLIS_PROFILE__;
+    },
+    // Data di nascita (per l'automazione Compleanno del PT).
+    setBirthDate: async (date) => {
+      const { data, error } = await supabase.rpc("athlete_set_birth_date", { p_date: date });
+      if (error) throw error;
+      window.__LIPPOLIS_PROFILE__ = { ...profile, ...window.__LIPPOLIS_PROFILE__, birthDate: data || date };
       return window.__LIPPOLIS_PROFILE__;
     }
   };
@@ -274,6 +281,7 @@ async function bootstrap(session) {
   };
   const openNotification = destination => {
     if(destination==="workout")api.openWorkout?.();
+    else if(destination==="profilo")api.openProfilo?.();
     else api.openChat?.();
   };
   alerts=createNotifications({
@@ -281,10 +289,21 @@ async function bootstrap(session) {
     types:[
       {id:"chat",label:"Nuovi messaggi",enabled:true},
       {id:"program",label:"Nuova scheda",enabled:true},
-      {id:"timer",label:"Timer di recupero",detail:"Avviso a fine recupero. Volume e suoneria si regolano nella sezione Timer.",enabled:true}
+      {id:"timer",label:"Timer di recupero",detail:"Avviso a fine recupero. Volume e suoneria si regolano nella sezione Timer.",enabled:true},
+      {id:"profilo",label:"Promemoria del profilo",detail:"Ad esempio la data di nascita da completare.",enabled:true}
     ],
     onOpen:openNotification
   });
+  // Clienti già iscritti senza data di nascita: un promemoria al giorno finché non la inseriscono.
+  if(!window.__LIPPOLIS_PROFILE__?.birthDate){
+    const keyNascita=`lippolis-promemoria-nascita:${user.uid}`, oggi=new Date().toLocaleDateString("sv-SE");
+    let ultimo=""; try{ ultimo=localStorage.getItem(keyNascita)||""; }catch{}
+    if(ultimo!==oggi) setTimeout(()=>{
+      if(window.__LIPPOLIS_PROFILE__?.birthDate) return;
+      void Promise.resolve(alerts.notify("profilo",{title:"Aggiungi la tua data di nascita",body:"Ti basta un attimo: la trovi nel Profilo.",destination:"profilo"}))
+        .then(()=>{ try{ localStorage.setItem(keyNascita,oggi); }catch{} }).catch(()=>{});
+    },4000);
+  }
   window.lippolisAlerts={
     mount:alerts.mount,
     timerDone:()=>alerts.notify("timer",{title:"Recupero terminato",body:"È ora della prossima serie.",
