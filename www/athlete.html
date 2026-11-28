@@ -473,6 +473,7 @@
   .program-day .pd-info{flex:1;min-width:0;}
   .program-day .pd-name{font:600 14px 'Archivo',system-ui,sans-serif;color:var(--text);}
   .program-day .pd-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+  .program-day .pd-date{color:var(--accent-ink);}
   .program-day .pd-open{flex:0 0 auto;border:0;border-radius:10px;background:var(--accent);color:var(--on-accent);padding:9px 11px;font:600 11px 'Archivo',system-ui,sans-serif;cursor:pointer;}
   .program-empty{padding:12px;border-radius:12px;background:var(--surface2);color:var(--muted);font-size:13px;line-height:1.45;}
   @media(max-width:360px){.physical-grid{gap:5px}.physical-metric{padding-inline-start:5px}.physical-metric .pm-value{font-size:14px}.program-day{gap:8px;padding:10px}.program-day .pd-open{padding:8px}}
@@ -1458,6 +1459,22 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   let coachDraft='';
   function apriCoachCon(testo){ coachDraft=testo||''; showTab('coach'); }
 
+  // ====== IMPOSTAZIONI DELL'APP SCELTE DAL PT (Impostazioni → App cliente nel pannello) ======
+  const APP_CFG_KEY='lippolis_pt_app_cfg';
+  let APP_CFG=(()=>{ try{ return JSON.parse(localStorage.getItem(APP_CFG_KEY)||'null')||{}; }catch(e){ return {}; } })();
+  function sezioneVisibile(k){ return !(APP_CFG.sezioni&&APP_CFG.sezioni[k]===false); }
+  const ALTRO_SEZ={'Storico pesi':'storico','Metriche':'metriche','Progressi fisici':'progressi','Documenti':'documenti','Questionari':'questionari','Agenda':'agenda','Abbonamenti':'abbonamenti'};
+  function tabVisibile(id){ return id==='consigli'?sezioneVisibile('consigli'):id==='coach'?sezioneVisibile('chat'):true; }
+  const GIORNI_SETT=['lunedì','martedì','mercoledì','giovedì','venerdì','sabato','domenica'];
+  // Data della seduta: quando è stata fatta, altrimenti il giorno previsto nella settimana (se il giorno ha un nome).
+  function dataSeduta(g,i){
+    if(!APP_CFG.dataAllenamento) return '';
+    const fatta=sessioneDelGiorno(i); if(fatta) return 'fatto il '+fmtData(fatta.ts);
+    const w=PROGRAMMA.settimane[settCorr], idx=GIORNI_SETT.indexOf(String(g.dn||'').toLowerCase());
+    if(idx<0||!/^\d{4}-\d{2}-\d{2}$/.test(w?.dal||'')) return '';
+    const d=new Date(w.dal+'T12:00:00'); d.setDate(d.getDate()+((idx-((d.getDay()+6)%7))+7)%7);
+    return fmtData(d.getTime());
+  }
   const NAV = [
     {id:'workout',  label:'Workout',             icon:I.dumbbell},
     {id:'consigli', label:'Consigli alimentari', icon:I.cutlery},
@@ -1467,7 +1484,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   ];
   function renderNav(){
     tabbarEl.innerHTML='';
-    NAV.forEach(n=>{ const t=document.createElement('div'); t.className='tab'+(n.id===activeTab?' active':'');
+    NAV.filter(n=>tabVisibile(n.id)).forEach(n=>{ const t=document.createElement('div'); t.className='tab'+(n.id===activeTab?' active':'');
       const nb=(n.id==='coach' && activeTab!=='coach') ? unreadCoach() : 0;
       t.innerHTML=`${n.icon}<span>${n.label}</span>${nb?`<span class="nb">${nb}</span>`:''}`;
       t.onclick=()=>showTab(n.id); tabbarEl.appendChild(t); });
@@ -1945,7 +1962,8 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function renderProgramDays(){
     const days=giorni.map((g,i)=>{
       const done=giornoFatto(i), started=!done&&dayStarted(i);
-      return `<div class="program-day${done?' done':''}"><div class="pd-index">${done?I.check:esc(g.dt||i+1)}</div><div class="pd-info"><div class="pd-name">${esc(titoloGiorno(g.titolo)||`Allenamento ${i+1}`)}</div><div class="pd-meta">${esc(dayMeta(g))}${done?' · Completato':started?' · In corso':''}</div></div><button type="button" class="pd-open" data-open-day="${i}">${done?'Rivedi':started?'Riprendi':'Inizia allenamento'}</button></div>`;
+      const quando=dataSeduta(g,i);
+      return `<div class="program-day${done?' done':''}"><div class="pd-index">${done?I.check:esc(g.dt||i+1)}</div><div class="pd-info"><div class="pd-name">${esc(titoloGiorno(g.titolo)||`Allenamento ${i+1}`)}</div><div class="pd-meta">${esc(dayMeta(g))}${done?' · Completato':started?' · In corso':''}${quando?` · <span class="pd-date">${esc(quando)}</span>`:''}</div></div><button type="button" class="pd-open" data-open-day="${i}">${done?'Rivedi':started?'Riprendi':'Inizia allenamento'}</button></div>`;
     }).join('');
     return days||'<div class="program-empty">Questa settimana non contiene sedute.</div>';
   }
@@ -2806,7 +2824,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
           const model=pdf.workoutPdfModel(PROGRAMMA,{cliente,isUnilat,fmtRec:ex=>{ if(ex.cardio||ex.timed) return ex.rec?fmtT(toSec(ex.rec)):'-'; const r=recEff(ex); return r?fmtT(r):'-'; }});
           pdf.drawWorkoutPdf(doc,model); nome=pdf.pdfFileName('Scheda',model.titolo);
         }else{
-          const model=pdf.nutritionPdfModel(coachSections.nutrition?.plan,{cliente});
+          const model=pdf.nutritionPdfModel(coachSections.nutrition?.plan,{cliente,nascondiMacro:!!APP_CFG.nascondiMacro});
           pdf.drawNutritionPdf(doc,model); nome=pdf.pdfFileName('Consigli alimentari',model.titolo);
         }
         const how=await pdf.deliverPdf(doc,nome);
@@ -2837,11 +2855,11 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const dish=item=>`<div class="nd-item"><span class="nd-n">${esc(item.nome)}</span>${qty(item.g)}</div>${item.alternative?.length?`<div class="nd-alt"><span class="nd-alt-l">Oppure</span>${item.alternative.map(a=>`<div class="nd-item"><span class="nd-n">${esc(a.nome)}</span>${qty(a.g)}</div>`).join('')}</div>`:''}`;
       const giorni=assigned.giorni||[];
       const days=giorni.map((day,i)=>{
-        const m=macroGiorno(day), open=consigliAperti.has(i);
+        const m=APP_CFG.nascondiMacro?{kcal:0,c:0,p:0,f:0}:macroGiorno(day), open=consigliAperti.has(i);
         const macros=[[m.c,'Carb.','carb'],[m.p,'Proteine','prot'],[m.f,'Grassi','fat']].filter(([v])=>v>0);
         return `<section class="nd-day${open?' open':''}">
           <button type="button" class="nd-head" data-nd-day="${i}" aria-expanded="${open}">
-            <span class="nd-kcal"><small>Calorie</small><b>${m.kcal||'—'}</b></span>
+            ${APP_CFG.nascondiMacro?'':`<span class="nd-kcal"><small>Calorie</small><b>${m.kcal||'—'}</b></span>`}
             <span class="nd-name">${esc(day.nome||'Giorno '+(i+1))}</span>
             <span class="nd-chev">${I.chevR}</span>
           </button>
@@ -2878,7 +2896,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function renderAltro(){
     view.innerHTML=`<div class="pagetitle">Altro</div><div class="menu" id="menu"></div>`;
     const m=document.getElementById('menu');
-    ALTRO.forEach(it=>{ const c=document.createElement('div'); c.className='mcard'; c.innerHTML=`<span class="mi">${it.icon}</span><span class="lbl">${it.t}</span><span class="mgo">${I.chevR}</span>`; c.onclick=()=>{ altroDetail=it.t; altroStoricoEx=null; view.scrollTop=0; renderView(); animaUnaVolta(view,'avanti'); }; m.appendChild(c); });
+    ALTRO.filter(it=>!ALTRO_SEZ[it.t]||sezioneVisibile(ALTRO_SEZ[it.t])).forEach(it=>{ const c=document.createElement('div'); c.className='mcard'; c.innerHTML=`<span class="mi">${it.icon}</span><span class="lbl">${it.t}</span><span class="mgo">${I.chevR}</span>`; c.onclick=()=>{ altroDetail=it.t; altroStoricoEx=null; view.scrollTop=0; renderView(); animaUnaVolta(view,'avanti'); }; m.appendChild(c); });
   }
   function renderDetail(title){
     const section={Questionari:'questionnaires',Agenda:'agenda',Abbonamenti:'subscriptions'}[title];
@@ -3764,6 +3782,15 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       return true;
     },
     applyNutrition: (value)=>{ nutrition=value; if(activeTab==='consigli')renderConsigli(); },
+    applyAppSettings: (value)=>{
+      const next=value&&typeof value==='object'?value:{};
+      if(JSON.stringify(next)===JSON.stringify(APP_CFG)) return;
+      APP_CFG=next; try{ localStorage.setItem(APP_CFG_KEY,JSON.stringify(next)); }catch(e){}
+      if(!tabVisibile(activeTab)){ showTab('workout'); return; }
+      renderNav();
+      const typing=view.contains(document.activeElement)&&/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+      if(!typing&&(activeTab==='consigli'||activeTab==='altro'||(activeTab==='workout'&&workoutView!=='detail'))){ if(activeTab==='altro'&&altroDetail&&ALTRO_SEZ[altroDetail]&&!sezioneVisibile(ALTRO_SEZ[altroDetail])) altroDetail=null; renderView(); }
+    },
     applyCoachSections: (value)=>{
       coachSections=value||{};
       if(activeTab==='altro'&&altroDetail==='Progressi fisici')updateSharedProgressPhotos?.();

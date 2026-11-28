@@ -365,6 +365,21 @@
   .code-chip{display:inline-flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:11px 15px; font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:15px; letter-spacing:0; color:var(--text);}
   .code-chip button{background:transparent;border:0;cursor:pointer;color:var(--accent-ink);display:grid;place-items:center;} .code-chip button svg{width:17px;height:17px;}
   .set-note{font-size:13px; color:var(--muted); font-weight:600; line-height:1.5; margin-bottom:14px; max-width:640px;}
+  .set-note code{font-family:var(--mono,monospace); font-size:12px; background:var(--surface2); border:1px solid var(--line-soft); border-radius:6px; padding:1px 5px; color:var(--text);}
+  /* interruttori delle impostazioni (automazioni, app cliente) */
+  .tog-row{display:flex; align-items:flex-start; gap:11px; padding:9px 0; cursor:pointer; max-width:640px;}
+  .tog-row input{appearance:none; -webkit-appearance:none; flex:0 0 auto; width:36px; height:21px; border-radius:11px; background:var(--line); position:relative; cursor:pointer; margin-top:1px; transition:background .15s var(--ease,ease);}
+  .tog-row input::after{content:''; position:absolute; top:3px; left:3px; width:15px; height:15px; border-radius:50%; background:var(--surface); transition:transform .15s var(--ease,ease);}
+  .tog-row input:checked{background:var(--accent);}
+  .tog-row input:checked::after{transform:translateX(15px);}
+  .tog-row input:focus-visible{outline:none; box-shadow:0 0 0 3px rgba(var(--accent-rgb),.3);}
+  .tog-t{font-size:14px; font-weight:600; color:var(--text); line-height:1.35;}
+  .tog-t small{display:block; font-size:12px; font-weight:500; color:var(--muted); margin-top:2px;}
+  .auto-body{margin:6px 0 0 47px; max-width:620px;}
+  .auto-sec.off .auto-body{opacity:.5;}
+  .auto-prev{font-size:12px; color:var(--muted); margin:-4px 0 12px; line-height:1.45;}
+  .auto-stato{color:var(--accent-ink);}
+  .cli-bday{-webkit-appearance:none; appearance:none; border:0; background:none; padding:0; font:inherit; color:var(--accent-ink); cursor:pointer; text-decoration:underline; text-underline-offset:2px;}
   .danger-link{display:block; background:transparent; border:0; color:var(--danger); font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:14px; cursor:pointer; padding:8px 0; text-align:left;}
 
   /* ---- Calendario nella home PT ---- */
@@ -1759,10 +1774,11 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const ini=c.nome.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     main.innerHTML=pageHead('Scheda cliente')+
       '<div class="sec">'+
-        '<div class="cli-head"><div class="cli-av '+(c.attivo?'':'off')+'" data-avatar="'+escapeHTML(c.id||'')+'">'+escapeHTML(ini)+'</div><div class="cli-id"><div class="cli-name">'+escapeHTML(c.nome)+'</div><div class="cli-sub"><span class="statusdot '+(c.attivo?'':'off')+'"><i></i>'+(c.attivo?'Attivo':'Disattivato')+'</span> · Registrato il '+fmt(c.reg)+'</div></div></div>'+
+        '<div class="cli-head"><div class="cli-av '+(c.attivo?'':'off')+'" data-avatar="'+escapeHTML(c.id||'')+'">'+escapeHTML(ini)+'</div><div class="cli-id"><div class="cli-name">'+escapeHTML(c.nome)+'</div><div class="cli-sub"><span class="statusdot '+(c.attivo?'':'off')+'"><i></i>'+(c.attivo?'Attivo':'Disattivato')+'</span> · Registrato il '+fmt(c.reg)+' · <button type="button" class="cli-bday" id="cliBday">'+(c.birth_date?'Nascita: '+fmt(c.birth_date):'Aggiungi data di nascita')+'</button></div></div></div>'+
         '<div class="menu">'+cliSezioni.map(s=>'<button class="mcard" data-sec="'+s.id+'"><span class="mi">'+s.icon+'</span><span class="lbl">'+s.label+'</span><span class="mgo">'+I.chevR+'</span></button>').join('')+'</div>'+
       '</div>';
     document.getElementById('back').onclick=()=>go('clienti');
+    document.getElementById('cliBday').onclick=()=>window.CoachDB.birthDate?.(c);
     main.querySelectorAll('[data-sec]').forEach(b=> b.onclick=()=>{ clientSection=b.dataset.sec; render(); });
   }
 
@@ -2152,7 +2168,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   }
 
   // ---- IMPOSTAZIONI ----
-  const setMenu=[['generali','Generali'],['aspetto','Aspetto'],['collaboratori','Collaboratori'],['questionari','Questionari'],['notifiche','Notifiche']];
+  const setMenu=[['generali','Generali'],['aspetto','Aspetto'],['app','App cliente'],['automazioni','Automazioni'],['collaboratori','Collaboratori'],['questionari','Questionari'],['notifiche','Notifiche']];
   function openNotificationSettings(){ setTab='notifiche'; go('impostazioni'); }
   function renderImpostazioni(){
     const menu='<aside class="set-menu"><div class="set-menu-h">Menu</div>'+setMenu.map(([id,l])=>'<button class="'+(setTab===id?'on':'')+'" data-st="'+id+'">'+l+'</button>').join('')+'</aside>';

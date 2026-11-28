@@ -59,6 +59,7 @@ async function startAthlete({ onSave, getState, getProgram } = {}) {
       };
     },
     async rpc(_name, args) {
+      if (_name === "athlete_app_settings") return { data: {}, error: null };
       rpcCalls.push(structuredClone(args));
       return onSave ? onSave(rpcCalls.length, args) : ok(args.p_expected_revision + 1);
     }

@@ -68,7 +68,7 @@ export function workoutPdfModel(program, { cliente = "", fmtRec = (ex) => String
 }
 
 const num = (v) => { const x = Number(String(v ?? "").replace(",", ".")); return Number.isFinite(x) && x > 0 ? x : 0; };
-export function nutritionPdfModel(plan, { cliente = "" } = {}) {
+export function nutritionPdfModel(plan, { cliente = "", nascondiMacro = false } = {}) {
   return {
     titolo: pdfText(plan?.nome || "Consigli alimentari"),
     cliente: pdfText(cliente),
@@ -78,7 +78,7 @@ export function nutritionPdfModel(plan, { cliente = "" } = {}) {
       const kcal = num(day.energia) || Math.round(p * 4 + c * 4 + f * 9);
       return {
         titolo: pdfText(day.nome || `Giorno ${i + 1}`),
-        macro: [kcal ? `${kcal} kcal` : "", c ? `Carboidrati ${Math.round(c)} g` : "", p ? `Proteine ${Math.round(p)} g` : "", f ? `Grassi ${Math.round(f)} g` : ""].filter(Boolean).join("   ·   "),
+        macro: nascondiMacro ? "" : [kcal ? `${kcal} kcal` : "", c ? `Carboidrati ${Math.round(c)} g` : "", p ? `Proteine ${Math.round(p)} g` : "", f ? `Grassi ${Math.round(f)} g` : ""].filter(Boolean).join("   ·   "),
         note: pdfText(day.note || ""),
         pasti: (day.pasti || []).map((meal) => ({
           tipo: pdfText(meal.tipo || "Pasto"),
