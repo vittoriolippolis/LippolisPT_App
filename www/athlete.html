@@ -875,6 +875,25 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 .card.done .sc-table td:first-child{background:color-mix(in srgb,var(--accent) 10%,var(--surface));}
 .mhead .add{background:transparent; color:var(--accent-ink); border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line-soft)); font-family:'Manrope',system-ui,sans-serif; font-weight:600; font-size:13px; padding:6px 12px; border-radius:8px;}
 
+/* ===== Grafici interattivi (28/11/2026) ===== */
+.ch-wrap{position:relative;}
+.ch-wrap svg[data-punti]{touch-action:pan-y; cursor:crosshair;}
+.ch-cursor{opacity:0; transition:opacity .15s var(--ease); pointer-events:none;}
+.ch-cursor.on{opacity:1;}
+.ch-cursor line{stroke:var(--muted2); stroke-width:1; stroke-dasharray:3 3;}
+.ch-cursor circle{fill:var(--surface); stroke:var(--accent); stroke-width:2.5;}
+.ch-tip{position:absolute; z-index:5; pointer-events:none; background:var(--text); color:var(--surface); border-radius:8px; padding:6px 10px; font-size:12px; line-height:1.35; white-space:nowrap; opacity:0; transform:translateY(4px); transition:opacity .15s var(--ease), transform .15s var(--ease);}
+.ch-tip.on{opacity:1; transform:none;}
+.ch-tip b{display:block; font-family:var(--mono); font-weight:500; font-size:13px;}
+.ch-tip span{opacity:.75;}
+.ex-trend{margin:4px 0 20px;}
+.ex-stat{display:flex; flex-direction:column; gap:2px; margin:0 2px 12px;}
+.ex-stat-l{font-size:13px; color:var(--muted);}
+.ex-stat-v{font-family:var(--mono); font-weight:500; font-size:28px; color:var(--text); font-variant-numeric:tabular-nums;}
+.ex-stat-d{font-size:13px; color:var(--muted);}
+.ex-stat-d.su{color:var(--up-ink);} .ex-stat-d.giu{color:var(--sg-down-ink);}
+.ch-hint{font-size:12px; color:var(--muted2); margin:8px 2px 0;}
+
 /* ===== Animazioni (28/11/2026): brevi, solo opacità e transform, una curva sola ===== */
 #view.entra{animation:vista-in .38s var(--ease);}
 #view.avanti{animation:vista-avanti .38s var(--ease);}
@@ -1220,6 +1239,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function uid(){ return 'x'+Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 
   const view = document.getElementById('view');
+  { let pendente=false; new MutationObserver(()=>{ if(pendente)return; pendente=true; requestAnimationFrame(()=>{ pendente=false; attivaGrafici(view); }); }).observe(view,{childList:true,subtree:true}); }
   const tabbarEl = document.getElementById('tabbar');
 
   // ====== ASSISTENTE AI (chat) ======
@@ -2335,7 +2355,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     return sessioni.slice().sort((a,b)=>b.ts-a.ts)
       .map(se=>{ const choices=(se.esercizi||[]).filter(e=>e.sets?.length); return {se,ex:(exerciseId&&choices.find(e=>e.exerciseId===exerciseId))||choices.find(e=>String(e.nome||'').trim().toLocaleLowerCase('it')===normalized)}; })
       .filter(x=>x.ex)
-      .map(x=>({ data: fmtDataAnno(x.se.ts), sett: x.se.settimana, nota: x.ex.note||'', lati: (x.ex.lati && x.ex.lati.length===x.ex.sets.length) ? x.ex.lati : ((x.ex.uni || /per lato/i.test(x.ex.note||'')) && x.ex.sets.length%2===0 ? x.ex.sets.map((_,i)=>LATI[i%2]) : null), serie: x.ex.sets }));
+      .map(x=>({ ts: x.se.ts, prog: x.se.prog||'', data: fmtDataAnno(x.se.ts), sett: x.se.settimana, nota: x.ex.note||'', lati: (x.ex.lati && x.ex.lati.length===x.ex.sets.length) ? x.ex.lati : ((x.ex.uni || /per lato/i.test(x.ex.note||'')) && x.ex.sets.length%2===0 ? x.ex.sets.map((_,i)=>LATI[i%2]) : null), serie: x.ex.sets }));
   }
   // Riferimento per giornata: lo stesso esercizio in due sedute diverse (es. Peck back il giorno dorso
   // e il giorno spalle) ha carichi diversi, e il confronto va fatto con la stessa seduta.
@@ -2451,7 +2471,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function storicoSessionsHTML(name,exerciseId){
     const sessions=getStorico(name,exerciseId), e=infoEsercizio(name);
     if(!sessions.length) return `<div class="nodata">Nessuno storico per questo esercizio.</div>`;
-    return sessions.map(ses=>`<div class="stor-block"><div class="stor-date">${ses.data}${ses.sett?' · Sett. '+esc(ses.sett):''}</div><table class="sc-table"><thead><tr><th>Serie</th><th>Peso</th><th>${e.unita==='sec'?'Tempo':'Reps'}</th><th>RIR</th></tr></thead><tbody>${ses.serie.map((st,si)=>{ const f=fmtSerie(e,st); return `<tr><td>${esc(savedSetLabel(ses.lati,st,si))}</td><td>${f.kg}</td><td>${f.r}</td><td>${valoreSerie(st.rir)??'—'}</td></tr>`; }).join('')}</tbody></table>${ses.nota?`<div class="stor-nota">${esc(ses.nota)}</div>`:''}</div>`).join('');
+    return graficoEsercizioHTML(sessions,e.unita==='sec')+sessions.map(ses=>`<div class="stor-block"><div class="stor-date">${ses.data}${ses.sett?' · Sett. '+esc(ses.sett):''}</div><table class="sc-table"><thead><tr><th>Serie</th><th>Peso</th><th>${e.unita==='sec'?'Tempo':'Reps'}</th><th>RIR</th></tr></thead><tbody>${ses.serie.map((st,si)=>{ const f=fmtSerie(e,st); return `<tr><td>${esc(savedSetLabel(ses.lati,st,si))}</td><td>${f.kg}</td><td>${f.r}</td><td>${valoreSerie(st.rir)??'—'}</td></tr>`; }).join('')}</tbody></table>${ses.nota?`<div class="stor-nota">${esc(ses.nota)}</div>`:''}</div>`).join('');
   }
   function renderStorico(){
     const name=storicoEx;
@@ -3090,6 +3110,60 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       pesoDraft=''; saveState(); renderMetriche();
     };
   }
+  // ====== Grafici interattivi: tocca o passa sopra per leggere il punto più vicino ======
+  function variazione(d,unita){ const v=Math.round(d*100)/100; return (v>0?'+':v<0?'−':'±')+fmtKgIt(Math.abs(v))+(unita?' '+unita:''); }
+  function attrPunti(punti,top,bot){ return `data-punti="${esc(JSON.stringify({top,bot,p:punti.map(p=>({x:Math.round(p.x*10)/10,y:Math.round(p.y*10)/10,t:p.t,s:p.s||''}))}))}"`; }
+  function attivaGrafici(root){
+    root.querySelectorAll('svg[data-punti]:not([data-attivo])').forEach(svg=>{
+      svg.dataset.attivo='1';
+      let dati; try{ dati=JSON.parse(svg.dataset.punti); }catch(e){ return; }
+      if(!dati.p?.length) return;
+      const wrap=svg.parentElement; wrap.classList.add('ch-wrap');
+      const ns='http://www.w3.org/2000/svg', cur=document.createElementNS(ns,'g');
+      cur.setAttribute('class','ch-cursor');
+      cur.innerHTML=`<line y1="${dati.top}" y2="${dati.bot}"/><circle r="5"/>`;
+      svg.appendChild(cur);
+      const tip=document.createElement('div'); tip.className='ch-tip'; tip.setAttribute('role','status'); wrap.appendChild(tip);
+      const vb=svg.viewBox.baseVal;
+      const mostra=e=>{
+        const r=svg.getBoundingClientRect(), x=(e.clientX-r.left)/r.width*vb.width;
+        let best=dati.p[0]; for(const p of dati.p) if(Math.abs(p.x-x)<Math.abs(best.x-x)) best=p;
+        cur.querySelector('line').setAttribute('x1',best.x); cur.querySelector('line').setAttribute('x2',best.x);
+        cur.querySelector('circle').setAttribute('cx',best.x); cur.querySelector('circle').setAttribute('cy',best.y);
+        cur.classList.add('on');
+        tip.innerHTML=`<b>${esc(best.t)}</b>${best.s?`<span>${esc(best.s)}</span>`:''}`;
+        const wr=wrap.getBoundingClientRect(), ox=r.left-wr.left, oy=r.top-wr.top, px=ox+best.x/vb.width*r.width, py=oy+best.y/vb.height*r.height;
+        tip.classList.add('on');
+        const w=tip.offsetWidth, h=tip.offsetHeight;
+        tip.style.left=Math.max(4,Math.min(wrap.clientWidth-w-4,px-w/2))+'px';
+        tip.style.top=(py-h-12<0?py+14:py-h-12)+'px';
+      };
+      const nascondi=()=>{ cur.classList.remove('on'); tip.classList.remove('on'); };
+      svg.addEventListener('pointermove',mostra); svg.addEventListener('pointerdown',mostra);
+      svg.addEventListener('pointerleave',e=>{ if(e.pointerType==='mouse')nascondi(); });
+      document.addEventListener('pointerdown',e=>{ if(!wrap.contains(e.target))nascondi(); });
+    });
+  }
+  // Grafico principale nello storico di un esercizio: la serie migliore di ogni seduta nel tempo.
+  function graficoEsercizioHTML(sessions,unitaSec){
+    const pts=sessions.slice().reverse().map(ses=>{
+      let best=null; for(const set of ses.serie||[]){ const kg=Number(set.kg), reps=Number(set.reps); if(!(kg>0))continue; if(!best||kg>best.kg||(kg===best.kg&&reps>best.reps))best={kg,reps}; }
+      return best&&{ts:ses.ts,v:best.kg,reps:best.reps,sett:ses.sett,prog:ses.prog};
+    }).filter(Boolean);
+    if(unitaSec||pts.length<2) return '';
+    const W=320,H=170,L=40,R=12,T=14,B=26, pw=W-L-R, ph=H-T-B;
+    let mn=Math.min(...pts.map(p=>p.v)), mx=Math.max(...pts.map(p=>p.v)); if(mn===mx){mn-=1;mx+=1;} const pad=(mx-mn)*.18; mn-=pad; mx+=pad;
+    const t0=pts[0].ts, span=(pts[pts.length-1].ts-t0)||1;
+    const X=ts=>L+((ts-t0)/span)*pw, Y=v=>T+(1-(v-mn)/(mx-mn))*ph;
+    const xy=pts.map(p=>({x:X(p.ts),y:Y(p.v)})), line=smoothPath(xy);
+    const area=line+` L${xy[xy.length-1].x.toFixed(1)},${(T+ph).toFixed(1)} L${xy[0].x.toFixed(1)},${(T+ph).toFixed(1)} Z`;
+    let grid=''; for(let k=0;k<=4;k++){ const val=mn+(mx-mn)*k/4, y=Y(val); grid+=`<line x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}" stroke="var(--line-soft)" stroke-width="1"/><text x="${L-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted2)">${fmtKgIt(Math.round(val*10)/10)}</text>`; }
+    let xl=''; const step=Math.max(1,Math.ceil(pts.length/4)); pts.forEach((p,i)=>{ if(i%step&&i!==pts.length-1)return; xl+=`<text x="${X(p.ts).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted2)">${fmtData(p.ts)}</text>`; });
+    const dots=xy.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
+    const punti=pts.map((p,i)=>({x:xy[i].x,y:xy[i].y,t:`${fmtData(p.ts)} · ${fmtKgIt(p.v)} kg × ${p.reps}`,s:[p.prog,p.sett?'sett. '+p.sett:''].filter(Boolean).join(' · ')}));
+    const first=pts[0], last=pts[pts.length-1], diff=last.v-first.v;
+    return `<section class="ex-trend"><div class="ex-stat"><span class="ex-stat-l">Serie migliore, ultima seduta</span><b class="ex-stat-v">${fmtKgIt(last.v)} kg × ${last.reps}</b><span class="ex-stat-d${diff>0?' su':diff<0?' giu':''}">${variazione(diff,'kg')} dal ${fmtData(first.ts)}</span></div><div class="chartcard"><svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block" ${attrPunti(punti,T,T+ph)}>${grid}<path class="ch-area" d="${area}" fill="rgba(var(--accent-rgb),.13)"/><path class="ch-line" pathLength="1" d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xl}</svg></div><p class="ch-hint">Tocca il grafico per leggere ogni seduta</p></section>`;
+  }
   function buildPesoChart(arr){
     const W=320,H=160,L=40,R=12,T=12,B=26, pw=W-L-R, ph=H-T-B;
     const mm=mediaMobile(arr,7);
@@ -3108,7 +3182,8 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     let xl=''; const step=Math.max(1, Math.ceil(arr.length/5));
     arr.forEach((d,i)=>{ if(i%step!==0 && i!==arr.length-1) return; xl+=`<text x="${X(d.ts).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted2)" font-weight="700">${fmtData(d.ts)}</text>`; });
     const last=pts[pts.length-1];
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path class="ch-area" d="${area}" fill="rgba(var(--accent-rgb),.13)"/>${raw}<path class="ch-line" pathLength="1" d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.6"/>${xl}</svg>`;
+    const punti=arr.map((d,i)=>({x:X(d.ts),y:Y(d.v),t:`${fmtData(d.ts)} · ${fmtKgIt(d.v)} kg`,s:mm[i]?`Media 7 giorni ${fmtKgIt(Math.round(mm[i].v*10)/10)} kg`:''}));
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block" ${attrPunti(punti,T,T+ph)}>${grid}<path class="ch-area" d="${area}" fill="rgba(var(--accent-rgb),.13)"/>${raw}<path class="ch-line" pathLength="1" d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.6"/>${xl}</svg>`;
   }
 
   function smoothPath(pts){
@@ -3122,7 +3197,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     }
     return d;
   }
-  function buildChart(data){
+  function buildChart(data,unita='cm'){
     const W=320,H=150,L=40,R=12,T=12,B=26, pw=W-L-R, ph=H-T-B;
     const vals=data.map(d=>d.v); let mn=Math.min(...vals), mx=Math.max(...vals);
     if(mn===mx){ mn-=1; mx+=1; } const pad=(mx-mn)*0.15; mn-=pad; mx+=pad;
@@ -3136,7 +3211,8 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     let xl=''; const step=data.length>6?2:1;
     data.forEach((d,i)=>{ if(i%step!==0 && i!==data.length-1) return; xl+=`<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted2)" font-weight="700">${d.l}</text>`; });
     const dots=pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path class="ch-area" d="${area}" fill="rgba(var(--accent-rgb),.13)"/><path class="ch-line" pathLength="1" d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xl}</svg>`;
+    const punti=data.map((d,i)=>({x:pts[i].x,y:pts[i].y,t:`${d.l||fmtData(d.ts)} · ${fmtKgIt(d.v)}${unita?' '+unita:''}`,s:i?variazione(d.v-data[i-1].v,unita)+' dalla misura prima':'Prima misura'}));
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block" ${attrPunti(punti,T,T+ph)}>${grid}<path class="ch-area" d="${area}" fill="rgba(var(--accent-rgb),.13)"/><path class="ch-line" pathLength="1" d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xl}</svg>`;
   }
 
   // ====== PLICHE (massa grassa) ======

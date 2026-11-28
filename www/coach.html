@@ -752,6 +752,24 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 .day-giorno{color:var(--muted);}
 .detf-l{font-family:'Manrope',system-ui,sans-serif; font-weight:500; font-size:12px; color:var(--muted);}
 
+/* ===== Radar del volume (28/11/2026) ===== */
+.radar{margin:8px 0 16px; display:flex; justify-content:center;}
+.radar svg{width:100%; max-width:380px; overflow:visible;}
+.rd-grid{fill:none; stroke:var(--line-soft); stroke-width:1;}
+.rd-axis{stroke:var(--line-soft); stroke-width:1;}
+.rd-area{fill:color-mix(in srgb,var(--accent) 22%,transparent); stroke:var(--accent); stroke-width:2; stroke-linejoin:round;}
+.rd-dot{fill:var(--accent); stroke:var(--surface); stroke-width:1.5;}
+.rd-shape{transform-origin:150px 150px; animation:rd-in .5s var(--ease) both;}
+@keyframes rd-in{from{opacity:0; transform:scale(.6);}}
+.rd-l{font-size:11px; fill:var(--muted);}
+.rd-l.zero{fill:var(--muted2);}
+.rd-v{font-family:var(--mono); fill:var(--text);}
+.vol-pairs{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:0 0 16px;}
+.vp-h{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px;}
+.vp-h b{font-family:var(--mono); font-weight:500; color:var(--text);}
+.vp-bar{height:6px; border-radius:3px; background:var(--surface2); overflow:hidden;}
+.vp-bar span{display:block; height:100%; background:var(--accent); border-radius:3px;}
+
 /* ===== Animazioni (28/11/2026), allineate all'app cliente ===== */
 @keyframes vt-in{from{opacity:0; transform:translateY(8px);}}
 .main.entra{animation:vista-in .38s var(--ease);}
@@ -2699,6 +2717,27 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const arr=Object.keys(map).map(g=>({g, s:map[g]})).filter(o=>o.s>0).sort((a,b)=>b.s-a.s);
     return {arr, na, tot};
   }
+  // Radar del volume per distretto: a colpo d'occhio si vede se la scheda è sbilanciata.
+  function radarVolume(arr){
+    if(arr.filter(o=>o.s>0).length<3) return '';
+    const val=Object.fromEntries(arr.map(o=>[o.g,o.s])), ax=GRUPPI.map(g=>({g,s:val[g]||0}));
+    const S=300, C=S/2, R=104, n=ax.length, max=Math.max(...ax.map(o=>o.s));
+    const pt=(i,f)=>{ const a=-Math.PI/2+i*2*Math.PI/n; return [C+Math.cos(a)*R*f, C+Math.sin(a)*R*f]; };
+    const ring=f=>ax.map((_,i)=>pt(i,f).map(v=>v.toFixed(1)).join(',')).join(' ');
+    let g=[.25,.5,.75,1].map(f=>'<polygon points="'+ring(f)+'" class="rd-grid"/>').join('');
+    g+=ax.map((_,i)=>{ const [x,y]=pt(i,1); return '<line x1="'+C+'" y1="'+C+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" class="rd-axis"/>'; }).join('');
+    const area=ax.map((o,i)=>pt(i,o.s/max).map(v=>v.toFixed(1)).join(',')).join(' ');
+    const dots=ax.map((o,i)=>{ const [x,y]=pt(i,o.s/max); return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3.5" class="rd-dot"><title>'+escapeHTML(o.g)+': '+o.s+' serie</title></circle>'; }).join('');
+    const labels=ax.map((o,i)=>{ const [x,y]=pt(i,1.16); const anchor=Math.abs(x-C)<8?'middle':(x<C?'end':'start'); return '<text x="'+x.toFixed(1)+'" y="'+(y+4).toFixed(1)+'" text-anchor="'+anchor+'" class="rd-l'+(o.s?'':' zero')+'">'+escapeHTML(o.g)+' <tspan class="rd-v">'+o.s+'</tspan></text>'; }).join('');
+    return '<figure class="radar"><svg viewBox="-40 -10 380 320" role="img" aria-label="Radar del volume per distretto">'+g+'<g class="rd-shape"><polygon points="'+area+'" class="rd-area"/>'+dots+'</g>'+labels+'</svg></figure>';
+  }
+  // Confronto fra distretti antagonisti presenti nella scheda.
+  function equilibrioVolume(arr){
+    const v=Object.fromEntries(arr.map(o=>[o.g,o.s]));
+    const coppie=[['Pettorali','Dorsali'],['Quadricipiti','Femorali'],['Bicipiti','Tricipiti']].filter(([a,b])=>v[a]||v[b]);
+    if(!coppie.length) return '';
+    return '<div class="vol-pairs">'+coppie.map(([a,b])=>{ const x=v[a]||0, y=v[b]||0, tot=x+y||1; return '<div class="vp"><div class="vp-h"><span>'+a+' <b>'+x+'</b></span><span><b>'+y+'</b> '+b+'</span></div><div class="vp-bar"><span style="width:'+Math.round(x/tot*100)+'%"></span></div></div>'; }).join('')+'</div>';
+  }
   function openVolume(){
     const {arr, na, tot}=computeVolume();
     let body;
@@ -2708,7 +2747,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const max=arr.length?arr[0].s:1;
       const bars=arr.map((o,i)=>'<div class="vbar'+(i===0?' top':'')+'"><span class="vbar-l">'+o.g+'</span><div class="vbar-track"><div class="vbar-fill" style="width:'+Math.round(o.s/max*100)+'%"></div></div><span class="vbar-v">'+o.s+' serie</span></div>').join('');
       const naBar = na>0 ? '<div class="vbar na"><span class="vbar-l">Non assegnato</span><div class="vbar-track"><div class="vbar-fill" style="width:'+Math.round(na/max*100)+'%"></div></div><span class="vbar-v">'+na+' serie</span></div>' : '';
-      body='<div class="vol-total"><span>Volume settimanale totale</span><b>'+tot+' serie</b></div><div class="vol-chart">'+bars+naBar+'</div>';
+      body='<div class="vol-total"><span>Volume settimanale totale</span><b>'+tot+' serie</b></div>'+radarVolume(arr)+equilibrioVolume(arr)+'<div class="vol-chart">'+bars+naBar+'</div>';
     }
     openModal('<div class="modal-h"><h3>Volume di allenamento</h3><button class="modal-x" id="mX">'+I.x+'</button></div>'+
       '<div class="modal-b">'+
