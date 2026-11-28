@@ -741,7 +741,8 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 
 /* ===== Animazioni (28/11/2026), allineate all'app cliente ===== */
 @keyframes vt-in{from{opacity:0; transform:translateY(8px);}}
-.main.entra{animation:vt-in .24s var(--ease);}
+.main.entra{animation:vista-in .38s var(--ease);}
+@keyframes vista-in{from{opacity:0; transform:translateY(18px);}}
 .ch-line{stroke-dasharray:1; stroke-dashoffset:1; animation:ch-draw .7s var(--ease) .05s forwards;}
 .ch-area{opacity:0; animation:ch-fade .4s var(--ease) .35s forwards;}
 @keyframes ch-draw{to{stroke-dashoffset:0;}}

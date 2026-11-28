@@ -474,7 +474,7 @@
   .pd-index svg{width:19px;height:19px}
   .session-action{position:static;display:flex;align-items:center;gap:12px;margin:18px 0 0;padding:9px;border-radius:16px;background:var(--surface);border:1px solid var(--line-soft);box-shadow:var(--shadow-card)}
   .session-action .concl-btn{width:auto;flex:1;padding:12px}
-  .session-action span{font-size:11px;font-weight:600;color:var(--muted);padding:0 4px}
+  .session-action>span{font-size:11px;font-weight:600;color:var(--muted);padding:0 4px}
   .set .sl{flex:0 0 38px}.set .field,.set .field input{min-width:0}
   .set .set-rest{padding:6px;flex:0 0 auto;min-height:30px}
   .set .set-work{-webkit-appearance:none;appearance:none;font:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:6px 8px;flex:0 0 auto;min-height:30px;border:0;background:var(--accent);color:var(--on-accent);font-weight:600}
@@ -849,22 +849,31 @@
 .tg b{font-size:13px;}
 /* Altro: righe con icona piccola in colonna fissa */
 .menu{gap:8px;}
-.mcard{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line-soft); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow-card); min-height:56px;}
-.mcard .mi{flex:0 0 18px; display:grid; place-items:center; color:var(--muted);}
-.mcard .mi svg{width:18px; height:18px; stroke-width:1.5;}
-.mcard .lbl{flex:1; font-family:'Manrope',system-ui,sans-serif; font-size:15px; font-weight:500; color:var(--text);}
-.mcard .mgo{color:var(--muted2); display:grid;}
+.mcard{display:flex; align-items:center; gap:14px; background:color-mix(in srgb,var(--accent) 13%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line-soft)); border-radius:14px; padding:16px; min-height:68px;}
+.mcard .mi{flex:0 0 36px; width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:var(--accent); color:var(--on-accent);}
+.mcard .mi svg{width:18px; height:18px;}
+.mcard .lbl{flex:1; font-family:'Archivo',system-ui,sans-serif; font-size:17px; font-weight:600; color:var(--accent-ink);}
+.mcard .mgo{color:var(--accent-ink); display:grid;}
 .mcard .mgo svg{width:16px; height:16px;}
 .mcard:active{transform:scale(.98);}
 /* pulsanti e controlli: transizioni brevi su colore e sfondo */
 button{transition:background-color .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease), transform .15s var(--ease);}
 
 /* ===== Animazioni (28/11/2026): brevi, solo opacità e transform, una curva sola ===== */
-#view.entra{animation:vt-in .24s var(--ease);}
+#view.entra{animation:vista-in .38s var(--ease);}
+#view.avanti{animation:vista-avanti .38s var(--ease);}
+#view.indietro{animation:vista-indietro .38s var(--ease);}
+@keyframes vista-in{from{opacity:0; transform:translateY(18px);}}
+@keyframes vista-avanti{from{opacity:0; transform:translateX(36px);}}
+@keyframes vista-indietro{from{opacity:0; transform:translateX(-36px);}}
 @keyframes vt-out{to{opacity:0;}}
 @keyframes vt-in{from{opacity:0; transform:translateY(8px);}}
-.card-body.apri{animation:body-in .22s var(--ease);}
-@keyframes body-in{from{opacity:0; transform:translateY(-4px);}}
+.card-body.apri{animation:body-in .3s var(--ease);}
+.card-body.apri>*{opacity:0; animation:riga-in .34s var(--ease) forwards;}
+.card-body.apri>*:nth-child(1){animation-delay:.04s;} .card-body.apri>*:nth-child(2){animation-delay:.09s;} .card-body.apri>*:nth-child(3){animation-delay:.14s;}
+.card-body.apri>*:nth-child(4){animation-delay:.19s;} .card-body.apri>*:nth-child(5){animation-delay:.24s;} .card-body.apri>*:nth-child(n+6){animation-delay:.28s;}
+.card.open{border-color:color-mix(in srgb,var(--accent) 45%,var(--line-soft)); transition:border-color .25s var(--ease);}
+@keyframes body-in{from{transform:translateY(-10px);}}
 .card-caret{transition:transform .18s var(--ease);}
 .chk.spunta{animation:spunta .2s var(--ease);}
 @keyframes spunta{from{transform:scale(.82);}}
@@ -887,11 +896,12 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 .timerbar.work{background:color-mix(in srgb,var(--accent) 82%,#000);}
 .timerbar.done{box-shadow:none;}
 /* concludi: scorri per confermare */
-.slide-confirm{position:relative; flex:1; height:48px; border-radius:12px; background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line-soft)); overflow:hidden; touch-action:pan-y; user-select:none; -webkit-user-select:none;}
+.session-action{padding:8px;}
+.slide-confirm{position:relative; flex:1; width:100%; height:56px; border-radius:12px; background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line-soft)); overflow:hidden; touch-action:pan-y; user-select:none; -webkit-user-select:none;}
 .slide-confirm:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
 .sc-fill{position:absolute; inset:0; background:var(--accent); transform-origin:left; transform:scaleX(0); opacity:.35;}
-.sc-label{position:absolute; inset:0; display:grid; place-items:center; padding-left:44px; font-size:14px; font-weight:600; color:var(--accent-ink); pointer-events:none; transition:opacity .15s var(--ease);}
-.sc-knob{position:absolute; top:4px; left:4px; width:40px; height:38px; border-radius:8px; background:var(--accent); color:var(--on-accent); display:grid; place-items:center; cursor:grab; touch-action:none;}
+.sc-label{position:absolute; inset:0; display:grid; place-items:center; padding-left:52px; font-size:15px; font-weight:600; color:var(--accent-ink); pointer-events:none; transition:opacity .15s var(--ease);}
+.sc-knob{position:absolute; top:4px; left:4px; width:56px; height:46px; border-radius:8px; background:var(--accent); color:var(--on-accent); display:grid; place-items:center; cursor:grab; touch-action:none;}
 .sc-knob svg{width:18px; height:18px;}
 .slide-confirm.drag .sc-knob{cursor:grabbing;}
 .slide-confirm.drag .sc-label,.slide-confirm.ok .sc-label{opacity:.4;}
@@ -1796,13 +1806,13 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function openDay(i){
     if(senzaScheda() || !giorni[i]) return;
     workoutReturnView=workoutView==='week'?'week':'list';
-    giornoCorr=i; workoutView='detail'; view.scrollTop=0; renderWorkout(); animaUnaVolta(view,'entra');
+    giornoCorr=i; workoutView='detail'; view.scrollTop=0; renderWorkout(); animaUnaVolta(view,'avanti');
   }
   function backFromWorkout(){
     if(_saveT)saveStateNow();
     workoutView=workoutReturnView;
     view.scrollTop=0;
-    renderWorkout(); animaUnaVolta(view,'entra');
+    renderWorkout(); animaUnaVolta(view,'indietro');
   }
   function physicalMetricsHTML(){
     const bia=orderedBiaRecords()[0];
@@ -1905,7 +1915,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       <div class="progmeta" id="dayMeta"></div>
       <div class="progwrap"><div class="barrow"><span>Completamento</span><span><b id="doneN">0</b> / <span id="totN">6</span></span></div><div class="bar"><i id="barFill"></i></div></div>
       <div id="list"></div>
-      <div class="session-action"><span id="exerciseProgress" aria-live="polite"></span><div class="slide-confirm" id="finishWorkout" role="button" tabindex="0" aria-label="Concludi allenamento: scorri verso destra o premi Invio"><span class="sc-fill"></span><span class="sc-label">Scorri per concludere</span><span class="sc-knob">${I.check}</span></div></div>`;
+      <div class="session-action"><div class="slide-confirm" id="finishWorkout" role="button" tabindex="0" aria-label="Concludi allenamento: scorri verso destra o premi Invio"><span class="sc-fill"></span><span class="sc-label">Scorri per concludere</span><span class="sc-knob">${I.check}</span></div></div>`;
     document.getElementById('wback').onclick=backFromWorkout;
     montaScorriConferma(document.getElementById('finishWorkout'),()=>concludiSessione(giornoCorr));
     wkRefresh();
@@ -2679,7 +2689,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function renderAltro(){
     view.innerHTML=`<div class="pagetitle">Altro</div><div class="menu" id="menu"></div>`;
     const m=document.getElementById('menu');
-    ALTRO.forEach(it=>{ const c=document.createElement('div'); c.className='mcard'; c.innerHTML=`<span class="mi">${it.icon}</span><span class="lbl">${it.t}</span><span class="mgo">${I.chevR}</span>`; c.onclick=()=>{ altroDetail=it.t; altroStoricoEx=null; view.scrollTop=0; renderView(); animaUnaVolta(view,'entra'); }; m.appendChild(c); });
+    ALTRO.forEach(it=>{ const c=document.createElement('div'); c.className='mcard'; c.innerHTML=`<span class="mi">${it.icon}</span><span class="lbl">${it.t}</span><span class="mgo">${I.chevR}</span>`; c.onclick=()=>{ altroDetail=it.t; altroStoricoEx=null; view.scrollTop=0; renderView(); animaUnaVolta(view,'avanti'); }; m.appendChild(c); });
   }
   function renderDetail(title){
     const section={Questionari:'questionnaires',Agenda:'agenda',Abbonamenti:'subscriptions'}[title];
