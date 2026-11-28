@@ -894,6 +894,29 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 .ex-stat-d.su{color:var(--up-ink);} .ex-stat-d.giu{color:var(--sg-down-ink);}
 .ch-hint{font-size:12px; color:var(--muted2); margin:8px 2px 0;}
 
+/* ===== Componenti (28/11/2026): anello settimana, manopola volume ===== */
+.upcard .uc-ring{position:relative; background:none; border:0; width:44px; height:44px; border-radius:50%;}
+.upcard .uc-ring>svg{position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg);}
+.uc-ring circle{fill:none; stroke-width:3.5;}
+.ur-bg{stroke:var(--line-soft);}
+.ur-v{stroke:var(--accent); stroke-linecap:round; stroke-dasharray:1; animation:ur-in .7s var(--ease) .1s both;}
+@keyframes ur-in{from{stroke-dashoffset:1;}}
+.ur-v.vuoto{display:none;}
+.ur-n{position:relative; font-family:var(--mono); font-weight:500; font-size:15px; color:var(--accent-ink);}
+.upcard .ur-n svg{position:static; width:18px; height:18px; transform:none;}
+.upcard.done .uc-ring{background:none;}
+.upcard.done .ur-n{color:var(--accent-ink);}
+.vol-row{flex-wrap:wrap; align-items:center;}
+.dial{position:relative; width:112px; height:112px; flex:0 0 112px; touch-action:none; cursor:grab; border-radius:50%;}
+.dial:focus-visible{outline:2px solid var(--accent); outline-offset:4px;}
+.dial svg{width:100%; height:100%;}
+.dial path{fill:none; stroke-width:8; stroke-linecap:round;}
+.dial-bg{stroke:var(--line-soft);}
+.dial-v{stroke:var(--accent); stroke-dasharray:1;}
+.dial-knob{fill:var(--surface); stroke:var(--accent); stroke-width:3;}
+.dial .vol-v{position:absolute; inset:0; display:grid; place-items:center; min-width:0; font-family:var(--mono); font-weight:500; font-size:20px;}
+.dial-help{flex:1; font-size:13px; color:var(--muted);}
+
 /* ===== Animazioni (28/11/2026): brevi, solo opacità e transform, una curva sola ===== */
 #view.entra{animation:vista-in .38s var(--ease);}
 #view.avanti{animation:vista-avanti .38s var(--ease);}
@@ -1887,7 +1910,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const title=[label,week.fase===label?'':week.fase].filter(Boolean).join(' · ');
       const detail=[rangeSett(week),status].filter(Boolean).join(' · ');
       return `<button type="button" class="upcard${i===activeWeek?' current':''}${complete?' done':''}" data-week="${i}" ${i===activeWeek?'aria-current="true"':''}>
-        <span class="ucidx" aria-hidden="true">${complete?I.check:esc(week.n??i+1)}</span>
+        <span class="ucidx uc-ring" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="ur-bg" cx="20" cy="20" r="17"/><circle class="ur-v${done?'':' vuoto'}" cx="20" cy="20" r="17" pathLength="1" style="stroke-dashoffset:${total?(1-done/total).toFixed(3):1}"/></svg><span class="ur-n">${complete?I.check:esc(week.n??i+1)}</span></span>
         <span class="ucinfo"><span class="ucn">${esc(title)}</span><span class="ucs">${esc(detail)}</span></span>
         <span class="ucgo" aria-hidden="true">${I.chevR}</span>
       </button>`;
@@ -2406,17 +2429,44 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     knob.addEventListener('pointerup',fine); knob.addEventListener('pointercancel',fine);
     el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); conferma(); } });
   }
+  // Manopola 10-100 a passi di 5 (arco di 270°): si trascina col dito, si regola con le frecce.
+  function montaManopola(el,valore,onInput,onChange){
+    const MIN=10, MAX=100, STEP=5, ARC=270, knob=el.querySelector('.dial-knob'), arc=el.querySelector('.dial-v');
+    const draw=v=>{ const f=(v-MIN)/(MAX-MIN), a=(135+f*ARC)*Math.PI/180; knob.setAttribute('cx',(50+40*Math.cos(a)).toFixed(1)); knob.setAttribute('cy',(50+40*Math.sin(a)).toFixed(1)); arc.style.strokeDashoffset=(1-f).toFixed(3); el.setAttribute('aria-valuenow',v); el.setAttribute('aria-valuetext',v+'%'); };
+    const clamp=v=>Math.max(MIN,Math.min(MAX,Math.round(v/STEP)*STEP));
+    let v=clamp(valore), trascina=false; draw(v);
+    const daPunto=e=>{ const r=el.getBoundingClientRect(), dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
+      let deg=Math.atan2(dy,dx)*180/Math.PI; deg=(deg-135+360)%360; if(deg>ARC) deg=deg>ARC+45?0:ARC;
+      const nv=clamp(MIN+deg/ARC*(MAX-MIN)); if(nv!==v){ v=nv; draw(v); onInput(v); } };
+    el.addEventListener('pointerdown',e=>{ trascina=true; el.setPointerCapture?.(e.pointerId); daPunto(e); e.preventDefault(); });
+    el.addEventListener('pointermove',e=>{ if(trascina) daPunto(e); });
+    const fine=()=>{ if(!trascina) return; trascina=false; onChange(v); };
+    el.addEventListener('pointerup',fine); el.addEventListener('pointercancel',fine);
+    el.addEventListener('keydown',e=>{ const d={ArrowUp:STEP,ArrowRight:STEP,ArrowDown:-STEP,ArrowLeft:-STEP,PageUp:20,PageDown:-20}[e.key]; if(e.key==='Home'||e.key==='End'){ v=e.key==='Home'?MIN:MAX; } else if(d){ v=clamp(v+d); } else return; e.preventDefault(); draw(v); onInput(v); onChange(v); });
+  }
+  // Numeri che scorrono fino al valore finale (es. volume nel riepilogo).
+  function contaNumeri(root){
+    const reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    root.querySelectorAll('[data-conta]').forEach(el=>{
+      const fine=Number(el.dataset.conta), suff=el.dataset.suff||''; if(!Number.isFinite(fine)) return;
+      const fmt=n=>Math.round(n).toLocaleString('it-IT')+suff;
+      if(reduce||fine===0){ el.textContent=fmt(fine); return; }
+      const t0=performance.now(), dur=700;
+      const passo=t=>{ const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3); el.textContent=fmt(fine*e); if(k<1) requestAnimationFrame(passo); };
+      requestAnimationFrame(passo);
+    });
+  }
   // Riepilogo mostrato dopo «Concludi allenamento».
   function riepilogoSessione(sessione){
     const es=sessione.esercizi||[], serie=es.reduce((n,ex)=>n+(ex.sets||[]).length,0);
     const volume=Math.round(es.reduce((t,ex)=>t+(ex.sets||[]).reduce((a,set)=>a+(Number(set.kg)>0&&Number(set.reps)>0?Number(set.kg)*Number(set.reps):0),0),0));
     const fatti=es.filter(ex=>(ex.sets||[]).length||ex.fatto).length;
-    const voci=[['Esercizi',String(fatti)],['Serie registrate',String(serie)],['Volume',volume?volume.toLocaleString('it-IT')+' kg':'—']];
+    const voci=[['Esercizi',fatti,''],['Serie registrate',serie,''],['Volume',volume,' kg']];
     const ov=document.createElement('div'); ov.className='riepilogo'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-labelledby','riepTitolo');
-    ov.innerHTML=`<div class="riep-card"><div class="riep-ic">${I.check}</div><h2 id="riepTitolo">Allenamento salvato</h2><p class="riep-sub">${esc(titoloGiorno(sessione.titolo))} · settimana ${esc(sessione.settimana)}</p><dl class="riep-list">${voci.map(([k,v],i)=>`<div style="animation-delay:${80+i*50}ms"><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><button type="button" class="btn-accent riep-ok">Chiudi</button></div>`;
+    ov.innerHTML=`<div class="riep-card"><div class="riep-ic">${I.check}</div><h2 id="riepTitolo">Allenamento salvato</h2><p class="riep-sub">${esc(titoloGiorno(sessione.titolo))} · settimana ${esc(sessione.settimana)}</p><dl class="riep-list">${voci.map(([k,v,suff],i)=>`<div style="animation-delay:${80+i*50}ms"><dt>${k}</dt><dd ${v?`data-conta="${v}" data-suff="${suff}"`:''}>${v?'0'+suff:'—'}</dd></div>`).join('')}</dl><button type="button" class="btn-accent riep-ok">Chiudi</button></div>`;
     const chiudi=()=>{ ov.classList.add('via'); setTimeout(()=>ov.remove(),180); };
     ov.querySelector('.riep-ok').onclick=chiudi; ov.onclick=e=>{ if(e.target===ov)chiudi(); };
-    (document.querySelector('.phone')||document.body).appendChild(ov); ov.querySelector('.riep-ok').focus();
+    (document.querySelector('.phone')||document.body).appendChild(ov); ov.querySelector('.riep-ok').focus(); setTimeout(()=>contaNumeri(ov),180);
   }
   function concludiSessione(day){
     if(giornoFatto(day)){ toastMsg('Allenamento già registrato'); return false; }
@@ -3392,7 +3442,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 
       <div class="pf-sec">Timer di recupero</div>
       <div class="pf-row" style="border-bottom:0; padding-bottom:0"><div class="t">Volume</div></div>
-      <div class="vol-row"><input type="range" id="pfVol" min="10" max="100" step="5" value="${volTimer}" aria-label="Volume del timer"><span class="vol-v" id="pfVolV">${volTimer}%</span><button class="vol-prova" id="pfVolProva">Prova</button></div>
+      <div class="vol-row"><div class="dial" id="pfVol" role="slider" tabindex="0" aria-label="Volume del timer" aria-valuemin="10" aria-valuemax="100" aria-valuenow="${volTimer}"><svg viewBox="0 0 100 100" aria-hidden="true"><path class="dial-bg" pathLength="1" d="M 21.7 78.3 A 40 40 0 1 1 78.3 78.3"/><path class="dial-v" pathLength="1" d="M 21.7 78.3 A 40 40 0 1 1 78.3 78.3"/><circle class="dial-knob" r="6"/></svg><span class="vol-v" id="pfVolV">${volTimer}%</span></div><p class="dial-help">Ruota la manopola o usa le frecce</p><button class="vol-prova" id="pfVolProva">Prova</button></div>
 
       <div class="pf-sec">Impostazioni</div>
       <div class="pf-row"><div class="t">Tema scuro</div><button class="tgl${tema==='scuro'?' on':''}" id="pfTema"></button></div>
@@ -3435,8 +3485,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     view.querySelectorAll('[data-col]').forEach(b=> b.onclick=()=>{ accento=b.dataset.col; applicaAccento(); saveStateNow(); renderProfilo(); renderNav(); });
     document.getElementById('pfTema').onclick=()=>{ tema = tema==='scuro' ? 'chiaro' : 'scuro'; applicaTema(); saveStateNow(); renderProfilo(); };
     const pv=document.getElementById('pfVol'), pvv=document.getElementById('pfVolV');
-    pv.oninput=()=>{ volTimer=+pv.value; pvv.textContent=volTimer+'%'; };
-    pv.onchange=()=>{ volTimer=+pv.value; saveStateNow(); riapplicaVolume(); };
+    montaManopola(pv,volTimer,v=>{ volTimer=v; pvv.textContent=v+'%'; },v=>{ volTimer=v; saveStateNow(); riapplicaVolume(); });
     document.getElementById('pfVolProva').onclick=()=>{ ensureAudio(); provaSuono(); };
     document.getElementById('accountPassword').onclick=window.lippolisOpenPassword;
     document.getElementById('pfReset').onclick=()=>{

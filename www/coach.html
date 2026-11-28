@@ -1682,7 +1682,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 
   // ---- HOME ----
   function tileHTML(tile,[count,detail]){
-    return '<button class="tile" data-go="'+tile.id+'"><span class="tile-ic">'+tile.icon+'</span><span class="tile-arrow">'+I.chevR+'</span><span class="tile-l">'+tile.label+'</span><span class="tile-metric">'+count+'</span><span class="tile-s">'+detail+'</span></button>';
+    return '<button class="tile" data-go="'+tile.id+'"><span class="tile-ic">'+tile.icon+'</span><span class="tile-arrow">'+I.chevR+'</span><span class="tile-l">'+tile.label+'</span><span class="tile-metric" data-conta="'+count+'">'+count+'</span><span class="tile-s">'+detail+'</span></button>';
   }
   function renderHome(){
     const active=clienti.filter(client=>client.attivo).length;
@@ -1696,6 +1696,17 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     main.innerHTML='<div class="home-head"><h1>Oggi</h1><p class="home-date">'+escapeHTML(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'}).replace(/^./,c=>c.toLocaleUpperCase('it')))+'</p></div><div class="home-layout"><nav class="tiles" aria-label="Sezioni del pannello PT">'+tiles.map(tile=>tileHTML(tile,counts[tile.id])).join('')+'</nav><section class="home-calendar" id="homeCalendar" aria-labelledby="calendarHeading"></section></div>';
     main.querySelectorAll('[data-go]').forEach(t=> t.onclick=()=>go(t.dataset.go));
     renderHomeCalendar();
+    contaNumeri(main);
+  }
+  // Numeri che scorrono fino al valore finale, come nell'app cliente.
+  function contaNumeri(root){
+    const reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    root.querySelectorAll('[data-conta]').forEach(el=>{
+      const fine=Number(el.dataset.conta); if(!Number.isFinite(fine)||reduce||fine===0) return;
+      const t0=performance.now(), dur=700;
+      const passo=t=>{ const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3); el.textContent=Math.round(fine*e).toLocaleString('it-IT'); if(k<1) requestAnimationFrame(passo); };
+      el.textContent='0'; requestAnimationFrame(passo);
+    });
   }
 
   // ---- CLIENTI ----
