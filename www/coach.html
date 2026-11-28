@@ -739,6 +739,37 @@
 button{transition:background-color .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease);}
 @media (max-width:720px){.tile{min-height:120px; padding:16px;} .tile-ic{width:32px;height:32px;}}
 
+/* ===== Revisione grafica, secondo giro (28/11/2026): scheda cliente come «Altro» dell'app, builder più sobrio ===== */
+.menu{gap:8px;}
+.mcard{display:flex; align-items:center; gap:14px; background:color-mix(in srgb,var(--accent) 13%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line-soft)); border-radius:14px; padding:16px; min-height:68px; transition:border-color .15s var(--ease), background-color .15s var(--ease);}
+.mcard:hover{transform:none; border-color:color-mix(in srgb,var(--accent) 55%,var(--line-soft));}
+.mcard .mi{flex:0 0 36px; width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:var(--accent); color:var(--on-accent);}
+.mcard .mi svg{width:18px; height:18px;}
+.mcard .lbl{flex:1; font-size:17px;}
+.mcard .mgo{color:var(--accent-ink); display:grid;}
+.mcard .mgo svg{width:16px; height:16px;}
+.day-head{background:var(--surface2);}
+.day-giorno{color:var(--muted);}
+.detf-l{font-family:'Manrope',system-ui,sans-serif; font-weight:500; font-size:12px; color:var(--muted);}
+
+/* ===== Radar del volume (28/11/2026) ===== */
+.radar{margin:8px 0 16px; display:flex; justify-content:center;}
+.radar svg{width:100%; max-width:380px; overflow:visible;}
+.rd-grid{fill:none; stroke:var(--line-soft); stroke-width:1;}
+.rd-axis{stroke:var(--line-soft); stroke-width:1;}
+.rd-area{fill:color-mix(in srgb,var(--accent) 22%,transparent); stroke:var(--accent); stroke-width:2; stroke-linejoin:round;}
+.rd-dot{fill:var(--accent); stroke:var(--surface); stroke-width:1.5;}
+.rd-shape{transform-origin:150px 150px; animation:rd-in .5s var(--ease) both;}
+@keyframes rd-in{from{opacity:0; transform:scale(.6);}}
+.rd-l{font-size:11px; fill:var(--muted);}
+.rd-l.zero{fill:var(--muted2);}
+.rd-v{font-family:var(--mono); fill:var(--text);}
+.vol-pairs{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:0 0 16px;}
+.vp-h{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px;}
+.vp-h b{font-family:var(--mono); font-weight:500; color:var(--text);}
+.vp-bar{height:6px; border-radius:3px; background:var(--surface2); overflow:hidden;}
+.vp-bar span{display:block; height:100%; background:var(--accent); border-radius:3px;}
+
 /* ===== Animazioni (28/11/2026), allineate all'app cliente ===== */
 @keyframes vt-in{from{opacity:0; transform:translateY(8px);}}
 .main.entra{animation:vista-in .38s var(--ease);}
@@ -1651,7 +1682,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
 
   // ---- HOME ----
   function tileHTML(tile,[count,detail]){
-    return '<button class="tile" data-go="'+tile.id+'"><span class="tile-ic">'+tile.icon+'</span><span class="tile-arrow">'+I.chevR+'</span><span class="tile-l">'+tile.label+'</span><span class="tile-metric">'+count+'</span><span class="tile-s">'+detail+'</span></button>';
+    return '<button class="tile" data-go="'+tile.id+'"><span class="tile-ic">'+tile.icon+'</span><span class="tile-arrow">'+I.chevR+'</span><span class="tile-l">'+tile.label+'</span><span class="tile-metric" data-conta="'+count+'">'+count+'</span><span class="tile-s">'+detail+'</span></button>';
   }
   function renderHome(){
     const active=clienti.filter(client=>client.attivo).length;
@@ -1665,6 +1696,17 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     main.innerHTML='<div class="home-head"><h1>Oggi</h1><p class="home-date">'+escapeHTML(new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'}).replace(/^./,c=>c.toLocaleUpperCase('it')))+'</p></div><div class="home-layout"><nav class="tiles" aria-label="Sezioni del pannello PT">'+tiles.map(tile=>tileHTML(tile,counts[tile.id])).join('')+'</nav><section class="home-calendar" id="homeCalendar" aria-labelledby="calendarHeading"></section></div>';
     main.querySelectorAll('[data-go]').forEach(t=> t.onclick=()=>go(t.dataset.go));
     renderHomeCalendar();
+    contaNumeri(main);
+  }
+  // Numeri che scorrono fino al valore finale, come nell'app cliente.
+  function contaNumeri(root){
+    const reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    root.querySelectorAll('[data-conta]').forEach(el=>{
+      const fine=Number(el.dataset.conta); if(!Number.isFinite(fine)||reduce||fine===0) return;
+      const t0=performance.now(), dur=700;
+      const passo=t=>{ const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3); el.textContent=Math.round(fine*e).toLocaleString('it-IT'); if(k<1) requestAnimationFrame(passo); };
+      el.textContent='0'; requestAnimationFrame(passo);
+    });
   }
 
   // ---- CLIENTI ----
@@ -1716,7 +1758,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     main.innerHTML=pageHead('Scheda cliente')+
       '<div class="sec">'+
         '<div class="cli-head"><div class="cli-av '+(c.attivo?'':'off')+'" data-avatar="'+escapeHTML(c.id||'')+'">'+escapeHTML(ini)+'</div><div class="cli-id"><div class="cli-name">'+escapeHTML(c.nome)+'</div><div class="cli-sub"><span class="statusdot '+(c.attivo?'':'off')+'"><i></i>'+(c.attivo?'Attivo':'Disattivato')+'</span> · Registrato il '+fmt(c.reg)+'</div></div></div>'+
-        '<div class="menu">'+cliSezioni.map(s=>'<button class="mcard" data-sec="'+s.id+'"><span class="lbl">'+s.label+'</span><span class="big">'+s.icon+'</span></button>').join('')+'</div>'+
+        '<div class="menu">'+cliSezioni.map(s=>'<button class="mcard" data-sec="'+s.id+'"><span class="mi">'+s.icon+'</span><span class="lbl">'+s.label+'</span><span class="mgo">'+I.chevR+'</span></button>').join('')+'</div>'+
       '</div>';
     document.getElementById('back').onclick=()=>go('clienti');
     main.querySelectorAll('[data-sec]').forEach(b=> b.onclick=()=>{ clientSection=b.dataset.sec; render(); });
@@ -2411,7 +2453,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const p=currentProg; if(!p){ go('workout'); return; }
     const actions='<button class="btn btn-ghost" id="saveMockProgram">'+I.check+' Salva</button><button class="btn btn-primary" id="assignMockProgram">'+I.send+' Assegna</button><button class="btn btn-ghost btn-danger-ghost" id="deleteMockProgram">'+I.trash+' Elimina</button><div class="view-seg"><button class="'+(p.viewMode==='col'?'on':'')+'" data-vm="col">'+I.cols+' Colonne</button><button class="'+(p.viewMode==='row'?'on':'')+'" data-vm="row">'+I.rows+' Righe</button></div>'+
       '<button class="btn btn-ghost" id="volBtn">'+I.chart+' Volume</button>'+
-      '<button class="btn btn-primary" id="impBtn">'+I.upload+' Importa</button>';
+      '<button class="btn btn-ghost" id="impBtn">'+I.upload+' Importa</button>';
     const wtabs=p.weeks.map((w,i)=>'<button class="wtab '+(i===progWeek?'on':'')+'" data-wk="'+i+'">'+escapeHTML(w.nome)+'</button>').join('');
     const wk=p.weeks[progWeek];
     const removeWeekDisabled=p.weeks.length===1 ? ' disabled title="Il programma deve avere almeno una settimana"' : '';
@@ -2686,6 +2728,27 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const arr=Object.keys(map).map(g=>({g, s:map[g]})).filter(o=>o.s>0).sort((a,b)=>b.s-a.s);
     return {arr, na, tot};
   }
+  // Radar del volume per distretto: a colpo d'occhio si vede se la scheda è sbilanciata.
+  function radarVolume(arr){
+    if(arr.filter(o=>o.s>0).length<3) return '';
+    const val=Object.fromEntries(arr.map(o=>[o.g,o.s])), ax=GRUPPI.map(g=>({g,s:val[g]||0}));
+    const S=300, C=S/2, R=104, n=ax.length, max=Math.max(...ax.map(o=>o.s));
+    const pt=(i,f)=>{ const a=-Math.PI/2+i*2*Math.PI/n; return [C+Math.cos(a)*R*f, C+Math.sin(a)*R*f]; };
+    const ring=f=>ax.map((_,i)=>pt(i,f).map(v=>v.toFixed(1)).join(',')).join(' ');
+    let g=[.25,.5,.75,1].map(f=>'<polygon points="'+ring(f)+'" class="rd-grid"/>').join('');
+    g+=ax.map((_,i)=>{ const [x,y]=pt(i,1); return '<line x1="'+C+'" y1="'+C+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" class="rd-axis"/>'; }).join('');
+    const area=ax.map((o,i)=>pt(i,o.s/max).map(v=>v.toFixed(1)).join(',')).join(' ');
+    const dots=ax.map((o,i)=>{ const [x,y]=pt(i,o.s/max); return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3.5" class="rd-dot"><title>'+escapeHTML(o.g)+': '+o.s+' serie</title></circle>'; }).join('');
+    const labels=ax.map((o,i)=>{ const [x,y]=pt(i,1.16); const anchor=Math.abs(x-C)<8?'middle':(x<C?'end':'start'); return '<text x="'+x.toFixed(1)+'" y="'+(y+4).toFixed(1)+'" text-anchor="'+anchor+'" class="rd-l'+(o.s?'':' zero')+'">'+escapeHTML(o.g)+' <tspan class="rd-v">'+o.s+'</tspan></text>'; }).join('');
+    return '<figure class="radar"><svg viewBox="-40 -10 380 320" role="img" aria-label="Radar del volume per distretto">'+g+'<g class="rd-shape"><polygon points="'+area+'" class="rd-area"/>'+dots+'</g>'+labels+'</svg></figure>';
+  }
+  // Confronto fra distretti antagonisti presenti nella scheda.
+  function equilibrioVolume(arr){
+    const v=Object.fromEntries(arr.map(o=>[o.g,o.s]));
+    const coppie=[['Pettorali','Dorsali'],['Quadricipiti','Femorali'],['Bicipiti','Tricipiti']].filter(([a,b])=>v[a]||v[b]);
+    if(!coppie.length) return '';
+    return '<div class="vol-pairs">'+coppie.map(([a,b])=>{ const x=v[a]||0, y=v[b]||0, tot=x+y||1; return '<div class="vp"><div class="vp-h"><span>'+a+' <b>'+x+'</b></span><span><b>'+y+'</b> '+b+'</span></div><div class="vp-bar"><span style="width:'+Math.round(x/tot*100)+'%"></span></div></div>'; }).join('')+'</div>';
+  }
   function openVolume(){
     const {arr, na, tot}=computeVolume();
     let body;
@@ -2695,7 +2758,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const max=arr.length?arr[0].s:1;
       const bars=arr.map((o,i)=>'<div class="vbar'+(i===0?' top':'')+'"><span class="vbar-l">'+o.g+'</span><div class="vbar-track"><div class="vbar-fill" style="width:'+Math.round(o.s/max*100)+'%"></div></div><span class="vbar-v">'+o.s+' serie</span></div>').join('');
       const naBar = na>0 ? '<div class="vbar na"><span class="vbar-l">Non assegnato</span><div class="vbar-track"><div class="vbar-fill" style="width:'+Math.round(na/max*100)+'%"></div></div><span class="vbar-v">'+na+' serie</span></div>' : '';
-      body='<div class="vol-total"><span>Volume settimanale totale</span><b>'+tot+' serie</b></div><div class="vol-chart">'+bars+naBar+'</div>';
+      body='<div class="vol-total"><span>Volume settimanale totale</span><b>'+tot+' serie</b></div>'+radarVolume(arr)+equilibrioVolume(arr)+'<div class="vol-chart">'+bars+naBar+'</div>';
     }
     openModal('<div class="modal-h"><h3>Volume di allenamento</h3><button class="modal-x" id="mX">'+I.x+'</button></div>'+
       '<div class="modal-b">'+
