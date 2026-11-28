@@ -8,6 +8,7 @@ import { recognizeInBodyPhoto, requiredBiaFields } from "./bia-ocr.mjs";
 import { markChatRead } from "./chat.mjs";
 import { createNotifications } from "./notifications.mjs";
 import { listProgressPhotos, PHOTO_BUCKET, groupProgressPhotos, POSE_LABELS } from "./progress-photos.mjs";
+import { AUTOMAZIONI_PREDEFINITE, NOMI_AUTOMAZIONI, SEGNAPOSTI, SEZIONI_APP, anteprimaTesto, normalizzaApp, normalizzaAutomazioni } from "./automazioni.mjs";
 
 const ui = window.CoachMock, $ = (id) => document.getElementById(id);
 const escape = (v) => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -972,7 +973,93 @@ function exerciseAttachments(ex) {
   $("attDel").onclick=async()=>{if(!confirm("Rimuovere l’allegato dalla libreria?"))return;Object.assign(ex,{video:"",videoStoragePath:"",attachmentPath:"",attachmentName:"",clip:false});if(await saveExercise(ex))ui.renderEsercizio();};
 }
 
+// ---- Impostazioni del PT su database: messaggi automatici e app cliente (tabella coach_settings) ----
+let coachSettings=null;
+async function loadCoachSettings(force=false){
+  if(coachSettings&&!force)return coachSettings;
+  const row=checked(await supabase.from("coach_settings").select("app,automazioni,ultimo_controllo").eq("coach_id",uid).maybeSingle());
+  coachSettings={app:normalizzaApp(row?.app),automazioni:normalizzaAutomazioni(row?.automazioni),ultimoControllo:row?.ultimo_controllo||null,salvato:!!row};
+  return coachSettings;
+}
+async function saveCoachSettings(next){
+  const app=normalizzaApp(next.app), automazioni=normalizzaAutomazioni(next.automazioni);
+  checked(await supabase.rpc("save_coach_settings",{p_app:app,p_automazioni:automazioni}));
+  coachSettings={...coachSettings,app,automazioni,salvato:true};
+  ui.toast("Impostazioni salvate");
+}
+const toggle=(id,label,on,hint="")=>`<label class="tog-row"><input type="checkbox" id="${id}"${on?" checked":""}><span class="tog-t">${escape(label)}${hint?`<small>${escape(hint)}</small>`:""}</span></label>`;
+async function automationsPanel(panel){
+  panel.innerHTML='<div class="set-title">Automazioni</div><p class="set-note">Caricamento…</p>';
+  let cfg, log=[];
+  try{
+    cfg=await loadCoachSettings(true);
+    log=checked(await supabase.from("automation_log").select("athlete_id,kind,event_key,created_at").eq("coach_id",uid).order("created_at",{ascending:false}).limit(20))||[];
+  }catch(error){ panel.innerHTML='<div class="set-title">Automazioni</div>'+empty("Impostazioni non disponibili","Controlla la connessione e riprova."); return fail(error); }
+  const a=cfg.automazioni, nome=(id)=>ui.clienti.find(c=>c.id===id)?.nome||"Cliente";
+  const blocco=(key,titolo,descr,campi)=>`<div class="set-sec auto-sec" data-auto="${key}">${toggle("auto_"+key,titolo,a[key].attiva,descr)}<div class="auto-body">${campi}</div></div>`;
+  const testo=(id,label,value)=>`<label class="fld"><span>${label}</span><textarea class="ta" id="${id}" rows="3">${escape(value)}</textarea></label><p class="auto-prev" data-prev="${id}"></p>`;
+  const stato=cfg.ultimoControllo?`Ultimo controllo del motore: ${new Intl.DateTimeFormat("it-IT",{dateStyle:"medium",timeStyle:"short"}).format(new Date(cfg.ultimoControllo))}`:(cfg.salvato?"Il motore non ha ancora fatto il primo controllo (gira ogni 15 minuti).":"Attiva un'automazione e salva: il motore controlla ogni 15 minuti.");
+  panel.innerHTML=`<div class="set-title">Automazioni</div>
+    <p class="set-note">Messaggi che partono da soli nella chat del cliente, a nome tuo. Ognuno viene inviato una volta sola per cliente (per scheda, per anno o per soglia). Nei testi puoi usare ${SEGNAPOSTI.map(s=>`<code>${s}</code>`).join(" ")}.</p>
+    <p class="set-note auto-stato">${escape(stato)}</p>
+    <div class="set-sec"><div class="set-sec-h">Fascia oraria</div><div class="fld-row">${field("autoDa","Dalle ore","number",String(a.fascia.da))}${field("autoA","Alle ore","number",String(a.fascia.a))}</div><p class="set-note">Fuori da questa fascia (ora italiana) non parte niente: i messaggi aspettano l'apertura successiva.</p></div>
+    ${blocco("benvenuto","Benvenuto","Al nuovo cliente, appena entra nell'app (chi c'era già non lo riceve).",testo("autoTxtBenvenuto","Messaggio",a.benvenuto.testo))}
+    ${blocco("fineScheda","Fine scheda in arrivo","Quando al cliente mancano pochi allenamenti alla fine della scheda.",`<div class="fld-row">${field("autoFineN","Quando mancano (allenamenti)","number",String(a.fineScheda.allenamenti))}</div>`+testo("autoTxtFine","Messaggio",a.fineScheda.testo))}
+    ${blocco("compleanno","Compleanno","Il giorno del compleanno. La data di nascita si imposta nella scheda del cliente.",testo("autoTxtCompleanno","Messaggio",a.compleanno.testo))}
+    ${blocco("avanzamento","Avanzamento della scheda","A metà scheda e a scheda completata.",testo("autoTxt50","A metà (50%)",a.avanzamento.testo50)+testo("autoTxt100","Scheda completata (100%)",a.avanzamento.testo100))}
+    <div class="set-sec">${button("autoSave","Salva automazioni",true)}</div>
+    <div class="set-sec"><div class="set-sec-h">Ultimi messaggi automatici</div><div class="list">${log.map(it=>row(nome(it.athlete_id),`${NOMI_AUTOMAZIONI[it.kind]||it.kind} · ${displayDate(it.created_at)}`)).join("")||'<p class="set-note">Ancora nessun messaggio inviato.</p>'}</div></div>`;
+  const anteprime=()=>panel.querySelectorAll("[data-prev]").forEach(p=>{ p.textContent="Anteprima: "+anteprimaTesto($(p.dataset.prev)?.value||""); });
+  panel.querySelectorAll("textarea").forEach(ta=>ta.addEventListener("input",anteprime)); anteprime();
+  panel.querySelectorAll(".auto-sec").forEach(sec=>{ const cb=sec.querySelector("input[type=checkbox]"); const paint=()=>sec.classList.toggle("off",!cb.checked); cb.addEventListener("change",paint); paint(); });
+  $("autoSave").onclick=async(event)=>{
+    const b=event.currentTarget; b.disabled=true;
+    try{
+      const on=(k)=>$("auto_"+k).checked;
+      await saveCoachSettings({app:coachSettings.app,automazioni:{
+        fascia:{da:Number(val("autoDa")),a:Number(val("autoA"))},
+        benvenuto:{attiva:on("benvenuto"),testo:$("autoTxtBenvenuto").value},
+        fineScheda:{attiva:on("fineScheda"),allenamenti:Number(val("autoFineN")),testo:$("autoTxtFine").value},
+        compleanno:{attiva:on("compleanno"),testo:$("autoTxtCompleanno").value},
+        avanzamento:{attiva:on("avanzamento"),testo50:$("autoTxt50").value,testo100:$("autoTxt100").value}
+      }});
+      void automationsPanel(panel);
+    }catch(error){fail(error);}
+    finally{b.disabled=false;}
+  };
+}
+async function clientAppPanel(panel){
+  panel.innerHTML='<div class="set-title">App cliente</div><p class="set-note">Caricamento…</p>';
+  let cfg; try{ cfg=await loadCoachSettings(true); }catch(error){ panel.innerHTML='<div class="set-title">App cliente</div>'+empty("Impostazioni non disponibili","Controlla la connessione e riprova."); return fail(error); }
+  const app=cfg.app;
+  panel.innerHTML=`<div class="set-title">App cliente</div>
+    <p class="set-note">Valgono per tutti i tuoi clienti. Workout e Profilo restano sempre visibili.</p>
+    <div class="set-sec"><div class="set-sec-h">Sezioni visibili</div>${SEZIONI_APP.map(([k,l])=>toggle("appSez_"+k,l,app.sezioni[k]!==false,k==="chat"?"Spenta, sparisce la scheda Coach con la chat e le segnalazioni.":"")).join("")}</div>
+    <div class="set-sec"><div class="set-sec-h">Allenamento</div>${toggle("appData","Mostra la data degli allenamenti",app.dataAllenamento,"Accanto a ogni seduta della settimana: il giorno previsto o quando è stata fatta.")}</div>
+    <div class="set-sec"><div class="set-sec-h">Consigli alimentari</div>${toggle("appMacro","Nascondi calorie e macro",app.nascondiMacro,"Il cliente vede solo pasti, alimenti e grammi (anche nel PDF).")}</div>
+    <div class="set-sec">${button("appSave","Salva impostazioni app",true)}</div>`;
+  $("appSave").onclick=async(event)=>{
+    const b=event.currentTarget; b.disabled=true;
+    try{
+      const sezioni={}; for(const [k] of SEZIONI_APP) if(!$("appSez_"+k).checked) sezioni[k]=false;
+      await saveCoachSettings({automazioni:coachSettings.automazioni,app:{sezioni,dataAllenamento:$("appData").checked,nascondiMacro:$("appMacro").checked}});
+    }catch(error){fail(error);}
+    finally{b.disabled=false;}
+  };
+}
+// Data di nascita del cliente (per l'automazione Compleanno).
+function birthDate(client){
+  showModal("Data di nascita",field("mockBirthDate","Data di nascita","date",client.birth_date||""),"Salva",async()=>{
+    const date=val("mockBirthDate")||null;
+    if(date&&!(date>="1900-01-01"&&date<=today()))throw new Error("Data non valida.");
+    checked(await supabase.rpc("coach_set_birth_date",{p_athlete:client.id,p_date:date}));
+    client.birth_date=date; ui.toast(date?"Data di nascita salvata":"Data di nascita tolta"); ui.render();
+  });
+}
+
 function settings(panel,tab){
+  if(tab==="automazioni")return void automationsPanel(panel);
+  if(tab==="app")return void clientAppPanel(panel);
   if(tab==="notifiche"){
     panel.innerHTML='<h2 class="set-title">Notifiche</h2><div id="coachAlertSettings"></div>';
     alerts.mount($("coachAlertSettings"));
@@ -1215,7 +1302,7 @@ function openNotification(destination,clientId){
     $("homeCalendar")?.scrollIntoView({block:"nearest"});
   }
 }
-window.CoachDB={bodyWeightPanel,saveWorkspace,syncWorkspace,deleteProgram,deleteMealPlan,saveProgram,assignProgram,publishNutrition,confirmNutritionDayDeletion,createClient,openClient,programHistory,clientSection,weightHistoryOverview,addMeasure,metricActions,createExercise,saveExercise,exerciseAttachments,settings,sendPriority,storeSignal,recipes,renderInbox,editCalendarReminder,deleteCalendarReminder};
+window.CoachDB={birthDate,bodyWeightPanel,saveWorkspace,syncWorkspace,deleteProgram,deleteMealPlan,saveProgram,assignProgram,publishNutrition,confirmNutritionDayDeletion,createClient,openClient,programHistory,clientSection,weightHistoryOverview,addMeasure,metricActions,createExercise,saveExercise,exerciseAttachments,settings,sendPriority,storeSignal,recipes,renderInbox,editCalendarReminder,deleteCalendarReminder};
 $("coachLogout").onclick=signOutCoach;
 $("coachSwitch").onclick=openCoachAccounts;
 void start();

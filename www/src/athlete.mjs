@@ -352,6 +352,13 @@ async function bootstrap(session) {
   applyRemoteChanges(user.uid);
   void loadMessages(user.uid).catch((error) => badgeText(friendlyAuthError(error), true));
   stopNutritionWatch = watchAthleteNutrition(user.uid, (value) => api.applyNutrition(value));
+  // Impostazioni dell'app scelte dal PT (sezioni visibili, data degli allenamenti, macro nascosti).
+  const loadAppSettings = async () => {
+    const { data, error } = await supabase.rpc("athlete_app_settings");
+    if (!error) api.applyAppSettings?.(data && typeof data === "object" ? data : {});
+  };
+  void loadAppSettings().catch(() => {});
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) void loadAppSettings().catch(() => {}); });
   void import("./athlete-coach-sections.mjs").then(({watchCoachSections})=>{
     coachSectionsWatch=watchCoachSections(user.uid,(value)=>api.applyCoachSections(value));
     window.lippolisCoachSections=coachSectionsWatch;
