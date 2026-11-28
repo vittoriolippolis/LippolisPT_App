@@ -859,6 +859,22 @@
 /* pulsanti e controlli: transizioni brevi su colore e sfondo */
 button{transition:background-color .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease), transform .15s var(--ease);}
 
+/* ===== Revisione grafica, secondo giro (28/11/2026): consigli alimentari, storico, metriche ===== */
+.nd-day.open .nd-head{background:var(--surface); color:var(--text); border-bottom:1px solid var(--line-soft);}
+.nd-day.open .nd-chev svg{color:var(--muted);}
+.nd-day.open{border-color:color-mix(in srgb,var(--accent) 45%,var(--line-soft));}
+.nd-kcal{background:transparent; padding:0; min-width:56px; align-items:flex-start;}
+.nd-kcal b,.nd-big b,.nd-macros b,.nd-q b{font-family:var(--mono); font-weight:500; font-variant-numeric:tabular-nums;}
+.nd-name{font-weight:600;}
+.nd-big{background:transparent; color:var(--text); align-items:flex-start; padding:0; min-width:0;}
+.nd-big small{color:var(--muted); font-weight:500;}
+.nd-big b{font-size:28px; color:var(--text);}
+.sc-table{border:1px solid var(--line-soft); border-radius:10px;}
+.sc-table th{background:var(--surface2); color:var(--muted); font-family:'Manrope',system-ui,sans-serif; font-weight:500; font-size:12px; border-bottom:1px solid var(--line-soft);}
+.sc-table td:first-child{background:var(--surface); color:var(--muted); font-family:var(--mono); font-weight:500;}
+.card.done .sc-table td:first-child{background:color-mix(in srgb,var(--accent) 10%,var(--surface));}
+.mhead .add{background:transparent; color:var(--accent-ink); border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line-soft)); font-family:'Manrope',system-ui,sans-serif; font-weight:600; font-size:13px; padding:6px 12px; border-radius:8px;}
+
 /* ===== Animazioni (28/11/2026): brevi, solo opacità e transform, una curva sola ===== */
 #view.entra{animation:vista-in .38s var(--ease);}
 #view.avanti{animation:vista-avanti .38s var(--ease);}

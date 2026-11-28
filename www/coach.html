@@ -739,6 +739,19 @@
 button{transition:background-color .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease);}
 @media (max-width:720px){.tile{min-height:120px; padding:16px;} .tile-ic{width:32px;height:32px;}}
 
+/* ===== Revisione grafica, secondo giro (28/11/2026): scheda cliente come «Altro» dell'app, builder più sobrio ===== */
+.menu{gap:8px;}
+.mcard{display:flex; align-items:center; gap:14px; background:color-mix(in srgb,var(--accent) 13%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line-soft)); border-radius:14px; padding:16px; min-height:68px; transition:border-color .15s var(--ease), background-color .15s var(--ease);}
+.mcard:hover{transform:none; border-color:color-mix(in srgb,var(--accent) 55%,var(--line-soft));}
+.mcard .mi{flex:0 0 36px; width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:var(--accent); color:var(--on-accent);}
+.mcard .mi svg{width:18px; height:18px;}
+.mcard .lbl{flex:1; font-size:17px;}
+.mcard .mgo{color:var(--accent-ink); display:grid;}
+.mcard .mgo svg{width:16px; height:16px;}
+.day-head{background:var(--surface2);}
+.day-giorno{color:var(--muted);}
+.detf-l{font-family:'Manrope',system-ui,sans-serif; font-weight:500; font-size:12px; color:var(--muted);}
+
 /* ===== Animazioni (28/11/2026), allineate all'app cliente ===== */
 @keyframes vt-in{from{opacity:0; transform:translateY(8px);}}
 .main.entra{animation:vista-in .38s var(--ease);}
@@ -1716,7 +1729,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     main.innerHTML=pageHead('Scheda cliente')+
       '<div class="sec">'+
         '<div class="cli-head"><div class="cli-av '+(c.attivo?'':'off')+'" data-avatar="'+escapeHTML(c.id||'')+'">'+escapeHTML(ini)+'</div><div class="cli-id"><div class="cli-name">'+escapeHTML(c.nome)+'</div><div class="cli-sub"><span class="statusdot '+(c.attivo?'':'off')+'"><i></i>'+(c.attivo?'Attivo':'Disattivato')+'</span> · Registrato il '+fmt(c.reg)+'</div></div></div>'+
-        '<div class="menu">'+cliSezioni.map(s=>'<button class="mcard" data-sec="'+s.id+'"><span class="lbl">'+s.label+'</span><span class="big">'+s.icon+'</span></button>').join('')+'</div>'+
+        '<div class="menu">'+cliSezioni.map(s=>'<button class="mcard" data-sec="'+s.id+'"><span class="mi">'+s.icon+'</span><span class="lbl">'+s.label+'</span><span class="mgo">'+I.chevR+'</span></button>').join('')+'</div>'+
       '</div>';
     document.getElementById('back').onclick=()=>go('clienti');
     main.querySelectorAll('[data-sec]').forEach(b=> b.onclick=()=>{ clientSection=b.dataset.sec; render(); });
@@ -2411,7 +2424,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const p=currentProg; if(!p){ go('workout'); return; }
     const actions='<button class="btn btn-ghost" id="saveMockProgram">'+I.check+' Salva</button><button class="btn btn-primary" id="assignMockProgram">'+I.send+' Assegna</button><button class="btn btn-ghost btn-danger-ghost" id="deleteMockProgram">'+I.trash+' Elimina</button><div class="view-seg"><button class="'+(p.viewMode==='col'?'on':'')+'" data-vm="col">'+I.cols+' Colonne</button><button class="'+(p.viewMode==='row'?'on':'')+'" data-vm="row">'+I.rows+' Righe</button></div>'+
       '<button class="btn btn-ghost" id="volBtn">'+I.chart+' Volume</button>'+
-      '<button class="btn btn-primary" id="impBtn">'+I.upload+' Importa</button>';
+      '<button class="btn btn-ghost" id="impBtn">'+I.upload+' Importa</button>';
     const wtabs=p.weeks.map((w,i)=>'<button class="wtab '+(i===progWeek?'on':'')+'" data-wk="'+i+'">'+escapeHTML(w.nome)+'</button>').join('');
     const wk=p.weeks[progWeek];
     const removeWeekDisabled=p.weeks.length===1 ? ' disabled title="Il programma deve avere almeno una settimana"' : '';
