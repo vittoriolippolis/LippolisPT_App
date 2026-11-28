@@ -555,6 +555,8 @@
   .tp-opt:hover{background:var(--surface2); color:var(--text);}
   .tp-opt.sel{background:var(--accent); color:var(--on-accent);}
   .note-field{margin-top:10px; display:flex; flex-direction:column; gap:5px;}
+  .tec-row{margin-top:10px; display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:9px; max-width:620px;}
+  .tec-row .detf.is-off{opacity:.45;}
   .detf-ta{width:100%; min-height:44px; resize:vertical; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:8px 10px; color:var(--text); font-family:'Manrope',system-ui,sans-serif; font-size:13px; line-height:1.4; outline:none; transition:.15s;}
   .detf-ta::placeholder{color:var(--muted2);}
   .ex-group{position:relative; margin:14px 0 2px; padding:18px 11px 11px; background:var(--accent-soft); border:1px solid rgba(var(--accent-rgb),.32); border-left:3px solid var(--accent); border-radius:14px; display:flex; flex-direction:column; gap:9px;}
@@ -2396,8 +2398,17 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
         '<label class="detf"><span class="detf-l">Carico</span><input class="detf-in" data-d="carico" placeholder="kg / PC / %"></label>'+
         '<label class="detf"><span class="detf-l">TUT</span><input class="detf-in" data-d="tut" placeholder="—"></label>'+
       '</div>'+
+      tecRow(e)+
       '<div class="note-field"><span class="detf-l">Note</span><textarea class="detf-ta" data-d="note" placeholder="Note per l\'esercizio…"></textarea></div>'+
     '</div>';
+  }
+  // Tecnica d'intensità sulle serie (Metodo): finisce nella riga della serie dell'app, non solo nella nota.
+  const TEC_OPZ=[['','Nessuna'],['stripping','Stripping (−20%, 2 scarichi)'],['drop','Drop set (pausa 20", stesso carico)'],['interrotte','Serie interrotte (5+5+5, pause 20")'],['rest_pause','Rest-pause (2× pausa 15")'],['top_bake','Top set + bake off'],['tensione','Tensione continua']];
+  function tecRow(e){
+    const n=Math.max(1,parseInt(e.serie,10)||1), t=e.tecnica?.t||'';
+    const scope=[['ultima','Ultima serie'],['ultime2','Ultime due'],['tutte','Tutte le serie'],['prima','Prima serie']].concat(Array.from({length:n},(_,i)=>[String(i+1),(i+1)+'ª serie']));
+    return '<div class="tec-row"><label class="detf"><span class="detf-l">Tecnica</span><select class="detf-sel" data-tec="t">'+TEC_OPZ.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('')+'</select></label>'+
+      '<label class="detf'+(!t||t==='top_bake'?' is-off':'')+'"><span class="detf-l">Su</span><select class="detf-sel" data-tec="serie"'+(!t||t==='top_bake'?' disabled':'')+'>'+scope.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('')+'</select></label></div>';
   }
   function exCard(e, gi, ei){
     return '<div class="day-ex" data-exrow="'+gi+'-'+ei+'"><div class="dex-main"><div class="dex-n">'+escapeHTML(e.nome)+'</div>'+(e.muscolo?'<div class="dex-m">'+escapeHTML(e.muscolo)+'</div>':'')+'</div>'+
@@ -2414,7 +2425,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
         const members=[i]; let j=i+1;
         while(j<ex.length && ex[j].link){ members.push(j); j++; }
         if(members.length>1){
-          const tag = ex[members[1]].link==='alternativa' ? 'Alternativa' : 'Superserie';
+          const tag = ex[members[1]].link==='alternativa' ? 'Alternativa' : ex[members[1]].link==='multiserie' ? 'Multiserie' : 'Superserie';
           exHtml += '<div class="ex-group"><div class="ex-group-tag">'+tag+'</div>'+ members.map(mi=>exCard(ex[mi],gi,mi)).join('') +'</div>';
         } else { exHtml += exCard(ex[i],gi,i); }
         i=j;
@@ -2521,6 +2532,16 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
         }
         ctrl.addEventListener('mousedown', e=>e.stopPropagation());
       });
+      row.querySelectorAll('[data-tec]').forEach(ctrl=>{
+        const k=ctrl.dataset.tec;
+        ctrl.value = k==='t' ? (ex.tecnica?.t||'') : (ex.tecnica?.serie||'ultima');
+        ctrl.addEventListener('change', e=>{
+          const v=e.target.value;
+          if(k==='t'){ if(!v) delete ex.tecnica; else ex.tecnica={t:v, serie: v==='tensione'?'tutte':(ex.tecnica?.serie||'ultima')}; renderProgramma(); }
+          else if(ex.tecnica){ ex.tecnica={t:ex.tecnica.t, serie:v}; scheduleSave(); }
+        });
+        ctrl.addEventListener('mousedown', e=>e.stopPropagation());
+      });
       // time-field (recupero / tempo) → apre il picker a colonne
       row.querySelectorAll('[data-tf]').forEach(btn=> btn.addEventListener('click', e=>{ e.stopPropagation(); openTimePicker(btn, ex, btn.dataset.tf); }));
       // drag solo dal tasto "muovi"
@@ -2583,10 +2604,19 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     openModal('<div class="modal-h"><h3>Aggiungi</h3><button class="modal-x" id="mX">'+I.x+'</button></div>'+
       '<div class="modal-b"><p class="modal-note">Cosa vuoi aggiungere a questo esercizio?</p>'+
         '<div class="choice-grid"><button class="choice" data-link="superserie"><b>Superserie</b><span>Esegui un altro esercizio di seguito, senza recupero.</span></button>'+
-        '<button class="choice" data-link="alternativa"><b>Alternativa</b><span>Esercizio sostitutivo se la macchina è occupata.</span></button></div>'+
+        '<button class="choice" data-link="alternativa"><b>Alternativa</b><span>Esercizio sostitutivo se la macchina è occupata.</span></button>'+
+        '<button class="choice" data-link="multiserie"><b>Multiserie</b><span>Lo stesso esercizio con un\'altra serie: ripetizioni e recupero propri (es. 20 rip con 20" di recupero, poi 30 rip).</span></button></div>'+
       '</div>');
     document.getElementById('mX').onclick=closeModal;
-    document.querySelectorAll('.choice').forEach(b=> b.onclick=()=>{ const link=b.dataset.link; closeModal(); openAddEsercizio(gi,{mode:'link',index:ei,link:link}); });
+    document.querySelectorAll('.choice').forEach(b=> b.onclick=()=>{
+      const link=b.dataset.link; closeModal();
+      if(link==='multiserie'){
+        const lista=currentProg.weeks[progWeek].giorni[gi].esercizi, src=lista[ei];
+        const copia=JSON.parse(JSON.stringify(src)); delete copia._advanced; delete copia.tecnica; copia.link='multiserie'; copia.serie='1';
+        lista.splice(ei+1,0,copia); toast('Riga di multiserie aggiunta'); renderProgramma(); return;
+      }
+      openAddEsercizio(gi,{mode:'link',index:ei,link:link});
+    });
   }
   function openModificaWorkout(gi){
     const g=currentProg.weeks[progWeek].giorni[gi];
@@ -2645,7 +2675,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const tipo=_norm(row[ci.tipo]).toLowerCase().startsWith('tempo')?'tempo':'ripetizioni';
       giorniMap.get(gnum).esercizi.push({ nome:enome, tipo:tipo, serie:_intStr(row[ci.serie]), rip:_norm(row[ci.rt]), rec:_norm(row[ci.rec]), rir:_norm(row[ci.rir]), tut:_norm(row[ci.tut]), note:_norm(row[ci.note]), _ss:(ci.ss>=0?_norm(row[ci.ss]):'') });
     }
-    giorniMap.forEach(g=>{ for(let i=0;i<g.esercizi.length;i++){ const code=g.esercizi[i]._ss; if(code){ let j=i+1; while(j<g.esercizi.length && g.esercizi[j]._ss===code){ g.esercizi[j].link='superserie'; j++; } i=j-1; } } g.esercizi.forEach(e=>delete e._ss); });
+    giorniMap.forEach(g=>{ for(let i=0;i<g.esercizi.length;i++){ const code=g.esercizi[i]._ss; if(code){ let j=i+1; const stesso=e=>String(e.nome||'').trim().toLowerCase(); let multi=j<g.esercizi.length&&g.esercizi[j]._ss===code; for(let k=i+1;k<g.esercizi.length&&g.esercizi[k]._ss===code;k++) if(stesso(g.esercizi[k])!==stesso(g.esercizi[i])) multi=false; while(j<g.esercizi.length && g.esercizi[j]._ss===code){ g.esercizi[j].link=multi?'multiserie':'superserie'; j++; } i=j-1; } } g.esercizi.forEach(e=>delete e._ss); });
     const giorniBase=[...giorniMap.values()]; const weeks=[];
     if(!giorniBase.length)throw new Error('nessun esercizio da importare');
     for(let w=0;w<nSet;w++) weeks.push({nome:'Settimana '+(w+1), giorni:JSON.parse(JSON.stringify(giorniBase))});

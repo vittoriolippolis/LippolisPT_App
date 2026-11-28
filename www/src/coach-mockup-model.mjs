@@ -1,5 +1,6 @@
 import { convertLegacyProgram, validateV2Program } from "./workout-metrics.mjs";
 import { parseExerciseVideo } from "./exercise-video.mjs";
+import { normalizzaTecnica } from "./tecniche.mjs";
 
 const clone = (value) => structuredClone(value);
 const clean = (value) => String(value ?? "").trim();
@@ -9,6 +10,46 @@ const secs = (value) => {
 };
 const textReps = (s) => s?.reps_mode === "amrap" ? "AMRAP" : s?.reps_mode === "time" ? `${Math.floor((s.reps_min || 0) / 60)}:${String((s.reps_min || 0) % 60).padStart(2, "0")}` : s?.reps_min == null ? "" : s.reps_max !== s.reps_min ? `${s.reps_min}-${s.reps_max}` : String(s.reps_min);
 const textLoad = (s) => s?.load_unit === "bodyweight" ? "PC" : s?.load_note || (s?.load_value != null ? String(s.load_value) + (String(s.load_unit).startsWith("percent") ? "%" : "") : "");
+
+// Tecnica scelta nel builder ({t, serie}) → indici delle serie a cui si applica.
+export function serieTecnica(scope, total) {
+  const n = Math.max(0, Number(total) || 0);
+  if (!n) return [];
+  if (scope === "tutte") return Array.from({ length: n }, (_, i) => i);
+  if (scope === "prima") return [0];
+  if (scope === "ultime2") return n >= 2 ? [n - 2, n - 1] : [n - 1];
+  const index = Number(scope);
+  if (Number.isInteger(index) && index >= 1 && index <= n) return [index - 1];
+  return [n - 1];
+}
+// Applica la tecnica del builder alle righe v2: «top_bake» = top set sulla prima, bake off sulle altre.
+export function applicaTecnica(sets, tecnica) {
+  sets.forEach((set) => { delete set.technique; });
+  const t = tecnica?.t;
+  if (!t) return sets;
+  if (t === "top_bake") {
+    sets.forEach((set, i) => { set.technique = { t: i === 0 ? "top" : "bake_off" }; });
+    return sets;
+  }
+  const tec = normalizzaTecnica(tecnica);
+  if (!tec) return sets;
+  for (const i of serieTecnica(tecnica.serie, sets.length)) sets[i].technique = { ...tec };
+  return sets;
+}
+// Righe v2 → scelta del builder (la più comune: una tecnica sulle serie indicate).
+export function tecnicaDaSerie(sets) {
+  const rows = Array.isArray(sets) ? sets : [];
+  const marked = rows.map((set, i) => set?.technique?.t ? i : -1).filter((i) => i >= 0);
+  if (!marked.length) return null;
+  const types = rows.map((set) => set?.technique?.t || "");
+  if (types[0] === "top" && types.slice(1).every((x) => x === "bake_off")) return { t: "top_bake" };
+  const tec = normalizzaTecnica(rows[marked[0]].technique);
+  if (!tec) return null;
+  const n = rows.length;
+  const serie = marked.length === n ? "tutte" : marked.length === 1 && marked[0] === n - 1 ? "ultima" : marked.length === 1 && marked[0] === 0 ? "prima"
+    : marked.length === 2 && marked[0] === n - 2 && marked[1] === n - 1 ? "ultime2" : String(marked[0] + 1);
+  return { ...tec, serie };
+}
 
 export function mockupToProgram(template, dates) {
   const { dal, al } = dates;
@@ -47,13 +88,19 @@ export function mockupToProgram(template, dates) {
       exercise.legacyFields = { videoStoragePath: clean(original.videoStoragePath), alternativa: original.link === "alternativa" };
       if (original._advanced?.sets && original._advanced.signature === exerciseSignature(original)) exercise.sets = clone(original._advanced.sets);
       else exercise.sets.forEach((set) => { set.effort_by_feel = !clean(original.carico); set.client_note = ""; });
-      if (original.link === "superserie" && blocks.length) {
+      applicaTecnica(exercise.sets, original.tecnica);
+      if (original.link === "multiserie" && blocks.length) {
+        // Multiserie: stesso esercizio in più righe, ognuna con serie, ripetizioni e recupero propri.
+        const previous = blocks.at(-1);
+        previous.method = "multiset";
+        exercise.position = previous.exercises.length + 1; previous.exercises.push(exercise);
+      } else if (original.link === "superserie" && blocks.length) {
         const previous = blocks.at(-1);
         previous.method = original._advanced?.method==="circuit" ? "circuit" : previous.exercises.length>=2 ? "giant_set" : "superset";
         exercise.position = previous.exercises.length + 1; previous.exercises.push(exercise);
       } else {
         block.position = blocks.length + 1;
-        if (original._advanced?.method && !["superset","giant_set","circuit"].includes(original._advanced.method)) block.method = original._advanced.method;
+        if (original._advanced?.method && !["superset","giant_set","multiset","circuit"].includes(original._advanced.method)) block.method = original._advanced.method;
         blocks.push(block);
       }
     }
@@ -79,7 +126,9 @@ export function programToMockup(input, id) {
           rec:first?.rest_seconds==null?"":`${String(Math.floor(first.rest_seconds/60)).padStart(2,"0")}:${String(first.rest_seconds%60).padStart(2,"0")}`,
           rir:first?.target_rir==null?"":String(first.target_rir), tut:first?.tempo||"", carico:textLoad(first), note:exercise.client_note ?? (block.client_note || first?.client_note || ""),
           descrizione:exercise.instructions||"", video:exercise.video_ref||"", videoStoragePath:exercise.legacyFields?.videoStoragePath||"",
-          link:exercise.legacyFields?.alternativa?"alternativa":ei?"superserie":undefined };
+          link:exercise.legacyFields?.alternativa?"alternativa":ei?(block.method==="multiset"?"multiserie":"superserie"):undefined };
+        const tecnica=tecnicaDaSerie(exercise.sets);
+        if(tecnica) item.tecnica=tecnica;
         item._advanced={sets:clone(exercise.sets),method:block.method,signature:exerciseSignature(item)};
         return item;
       }))

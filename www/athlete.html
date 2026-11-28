@@ -270,6 +270,23 @@
   .set .f-rir.ok input,.set .f-rir.ok span{color:var(--accent-ink);}
   .set .f-rir.warn{border-color:#E0A82E; background:#FBF3DC;}
   .set .f-rir.warn input,.set .f-rir.warn span{color:#8F6B0F;}
+  /* tecniche per serie: etichetta sopra la riga, catena (pause + blocchi) sotto */
+  .set-tec{display:flex; align-items:center; gap:6px; margin:6px 0 -1px 45px; font-size:12px; font-weight:600; color:var(--accent-ink);}
+  .set-tec svg{width:13px; height:13px; flex:0 0 auto;}
+  .set-chain{display:flex; flex-direction:column; gap:6px; margin:0 0 6px 45px; padding-left:10px; border-left:2px solid var(--accent);}
+  .set-mini{display:flex; align-items:center; gap:7px;}
+  .set-mini .sl{flex:0 0 74px; font-size:11px; font-weight:600; color:var(--muted2);}
+  .set-mini .sl small{display:block; font-size:11px; color:var(--accent-ink);}
+  .set-mini .field{flex:1; min-width:0; display:flex; align-items:center; gap:4px; background:var(--surface2); border:1px solid var(--line); border-radius:8px; padding:5px 8px;}
+  .set-mini .field input{flex:1; width:100%; min-width:0; background:transparent; border:0; outline:none; color:var(--text); font-family:var(--mono,'Archivo'),system-ui,sans-serif; font-weight:600; font-size:14px;}
+  .set-mini .field input::placeholder{color:var(--muted2); font-weight:600;}
+  .set-mini .field span{font-size:11px; color:var(--muted2); font-weight:600;}
+  .set-mini .field:focus-within{border-color:var(--accent); background:var(--surface);}
+  .set-mini .mini-kg{flex:1; min-width:0; font-size:12px; font-weight:600; color:var(--muted2); padding:5px 2px;}
+  .chain-pausa{align-self:flex-start; display:inline-flex; align-items:center; gap:6px; -webkit-appearance:none; appearance:none; font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--surface); color:var(--accent-ink); border-radius:8px; padding:6px 10px; font-size:12px; font-weight:600;}
+  .chain-pausa b{font-family:var(--mono,'Archivo'),system-ui,sans-serif; font-weight:600;}
+  .chain-pausa svg{width:13px; height:13px;}
+  .chain-pausa[data-avviata]{background:var(--accent-soft); border-color:var(--accent);}
   /* ===== Suggerimenti progressione carichi ===== */
   .sugg{margin-top:10px;}
   .sugg-top{display:flex; align-items:center; gap:8px;}
@@ -1110,6 +1127,11 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   const REC_MAX_UNILAT=60, LATI=['DX','SX'];
   function isUnilat(ex){ if(!ex) return false; if(ex.unilaterale!=null) return !!ex.unilaterale; if(ex.cardio || ex.perLato) return false; if(RX_BILAT.test(String(ex.reps||''))||RX_BILAT.test(ex.note||'')) return false; return RX_UNILAT.test(ex.nome||'') || /per (lato|gamba|braccio)/i.test(String(ex.reps||'')) || RX_NOTA_UNILAT.test(ex.note||''); }
   function registraSerie(ex){ return !ex.cardio && !ex.timed && Number(ex.serie)>0; }
+  // ====== TECNICHE PER SERIE (stripping, drop set, serie interrotte, rest-pause, top set, bake off) ======
+  // Le prepara src/tecniche.mjs: ex.tecniche[i] = {t, blocchi, pausa, calo, reps, testo, passi} oppure null.
+  function nomiTecniche(ex){ return [...new Set((ex.tecniche||[]).filter(Boolean).map(x=>String(x.testo||'').split(' · ')[0]).filter(Boolean))]; }
+  const TEC_NOMI={stripping:'Stripping',drop:'Drop set',interrotte:'Serie interrotte',rest_pause:'Rest-pause',top:'Top set',bake_off:'Bake off',tensione:'Tensione continua'};
+  function chiaveEsercizio(ex){ return ex.ms>1 ? ex.nome+' #'+ex.ms : ex.nome; }
   function nSlot(ex){ return registraSerie(ex) ? Number(ex.serie)*(isUnilat(ex)?2:1) : 0; }
   // Serie mostrate: quelle della scheda, più quelle aggiunte o meno quelle tolte dal cliente (st.nSet).
   function slotCount(ex, st){ return st && st.nSet!=null ? st.nSet : Math.max(nSlot(ex), st?.sets?.length||0); }
@@ -1504,6 +1526,33 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const out={kg:inputKg??0,reps,rir};
     if(repsList.length>1) out.repsTesto=repsList.join(' + ');
     if(kgList&&kgList.length>1) out.kgTesto=kgList.map(fmtKgIt).join(' / ');
+    const tec=tecSerie(ex,i);
+    if(tec){
+      out.tecnica=tec.t;
+      // Blocchi della catena: si registrano nella stessa serie («12 + 6 + 4», carichi «40 / 32,5 / 25»).
+      const blocchi=tecCatena(tec)?blocchiSerie(ex,set,i,out.kg,tec):[];
+      if(blocchi.length){
+        out.blocchi=blocchi;
+        out.repsTesto=[...repsList,...blocchi.map(b=>b.reps)].join(' + ');
+        const kgs=[out.kg,...blocchi.map(b=>b.kg)];
+        if(kgs.some(k=>k!==out.kg)) out.kgTesto=kgs.map(k=>k===0?'C.L.':fmtKgIt(k)).join(' / ');
+      }
+    }
+    return out;
+  }
+  function tecSerie(ex,i){ const list=ex&&ex.tecniche; if(!Array.isArray(list)) return null; return list[isUnilat(ex)?Math.floor(i/2):i]||null; }
+  function tecCatena(tec){ return !!(tec&&Array.isArray(tec.passi)&&tec.passi.some(p=>p.tipo==='blocco')); }
+  // Scarico dello stripping: −calo% arrotondato per difetto al disco da 1,25 kg.
+  function scalaKg(kg,calo){ const b=Number(String(kg??'').replace(',','.')); if(!Number.isFinite(b)||b<=0) return null; const r=Math.floor((b*(1-(Number(calo)||20)/100)+1e-9)/1.25)*1.25; return r>0?+r.toFixed(2):null; }
+  function blocchiSerie(ex,set,i,kgBase,tec){
+    const passi=(tec.passi||[]).filter(p=>p.tipo==='blocco'), saved=Array.isArray(set.blocchi)?set.blocchi:[];
+    const out=[]; let kgPrima=kgBase;
+    passi.forEach((p,k)=>{
+      const b=saved[k]||{}, r=partiReps(b.reps), typed=partiKg(b.kg);
+      const kg=p.stessoCarico ? kgBase : (typed?typed[0]:(scalaKg(kgPrima,p.calo)??kgPrima));
+      kgPrima=kg;
+      if(r&&r[0]>0) out.push({kg,reps:r[0]});
+    });
     return out;
   }
   function isDone(ex, st){ const n=Math.min(nSlot(ex),slotCount(ex,st)); return !!st.manual || (n>0 && st.sets.slice(0,n).every((s,i)=>!!leggiSerie(ex,s,i))); }
@@ -1989,7 +2038,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     let i=0;
     while(i<g.esercizi.length){
       const ex=g.esercizi[i];
-      if(ex.ss){ const grp=document.createElement('div'); grp.className='ss-group'; const labels={superset:'Superserie',giant_set:'Giant set',circuit:'Circuito'}; grp.innerHTML='<div class="ss-tag">'+(labels[ex.ssType]||'Superserie')+'</div>'; while(i<g.esercizi.length && g.esercizi[i].ss===ex.ss){ grp.appendChild(card(g.esercizi[i],i)); i++; } list.appendChild(grp); }
+      if(ex.ss){ const grp=document.createElement('div'); grp.className='ss-group'; const labels={superset:'Superserie',giant_set:'Giant set',circuit:'Circuito',multiset:'Multiserie'}; grp.innerHTML='<div class="ss-tag">'+(labels[ex.ssType]||'Superserie')+'</div>'; while(i<g.esercizi.length && g.esercizi[i].ss===ex.ss){ grp.appendChild(card(g.esercizi[i],i)); i++; } list.appendChild(grp); }
       else { list.appendChild(card(ex,i)); i++; }
     }
     list.appendChild(feedbackBox());
@@ -2159,11 +2208,58 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const set=bySlot.size?bySlot.get(i):last[uni&&!perSide&&last.length<=n/2?Math.floor(i/2):i];
       if(!set||set.reps==null) return null;
       const kg=valoreSerie(set.kg);
+      if(Array.isArray(set.blocchi)&&set.blocchi.length) return {kg, kgTxt:kg===null?'':kg===0?'C.L.':fmtKgIt(kg), repsTxt:String(set.reps), blocchi:set.blocchi};
       return {kg, kgTxt:set.kgTesto||(kg===null?'':kg===0?'C.L.':fmtKgIt(kg)), repsTxt:String(set.repsTesto||set.reps)};
     });
   }
   // Parole scritte tutte in maiuscolo nei titoli dei giorni (es. «PETTO/SPALLE/TRICIPITI») mostrate come «Petto/Spalle/Tricipiti».
   function titoloGiorno(t){ return String(t||'').replace(/[A-ZÀ-Ý]{3,}/g,w=>w[0]+w.slice(1).toLocaleLowerCase('it')); }
+  // Catena della tecnica sotto la serie: pause col timer e blocchi da registrare (scarichi, mini-serie).
+  function catenaHTML(ex,i,tec,prevSet){
+    const nome=String(tec.testo||'').split(' · ')[0]; let k=0;
+    const passi=(tec.passi||[]).map(p=>{
+      if(p.tipo==='pausa') return `<button type="button" class="tg tg-timer chain-pausa" data-sec="${p.sec}" data-label="${esc(nome)} · pausa" aria-label="Avvia la pausa di ${p.sec} secondi">${I.play}<span>Pausa</span><b>${p.sec}"</b></button>`;
+      const prevB=prevSet?.blocchi?.[k], bi=k++;
+      const kg=p.stessoCarico?`<div class="mini-kg">stesso carico</div>`:`<div class="field"><input type="text" inputmode="decimal" autocomplete="off" name="bkg-${i}-${bi}" aria-label="Peso ${esc(p.nome)} serie ${i+1}" data-calo="${p.calo||0}"><span>kg</span></div>`;
+      return `<div class="set-mini" data-bi="${bi}"><div class="sl">${esc(p.nome)}${p.calo?`<small>−${p.calo}%</small>`:''}</div>${kg}<div class="field"><input type="text" inputmode="numeric" autocomplete="off" name="breps-${i}-${bi}" aria-label="Ripetizioni ${esc(p.nome)} serie ${i+1}" placeholder="${esc(prevB?.reps??p.reps??'')}"><span>reps</span></div></div>`;
+    }).join('');
+    return `<div class="set-chain" data-si="${i}">${passi}</div>`;
+  }
+  function montaCatene(ex,st,c){
+    const righe=c.querySelectorAll('.set');
+    c.querySelectorAll('.set-chain').forEach(ch=>{
+      const i=+ch.dataset.si, set=st.sets[i], tec=tecSerie(ex,i), riga=righe[i]; if(!set||!tec) return;
+      if(!Array.isArray(set.blocchi)) set.blocchi=[];
+      const pause=[...ch.querySelectorAll('.chain-pausa')];
+      pause.forEach(btn=>btn.addEventListener('click',()=>{ btn.dataset.avviata='1'; }));
+      // Pausa k = quella prima del blocco k: parte da sola appena si registra il blocco precedente.
+      const avviaPausa=k=>{ const btn=pause[k]; if(!btn||btn.dataset.avviata||tmr.running) return; btn.dataset.avviata='1'; startTimer(+btn.dataset.sec, btn.dataset.label); };
+      const segnaposti=()=>{
+        const mainKg=riga?.querySelectorAll('input')[0];
+        let base=valoreSerie((mainKg?.value||mainKg?.placeholder||'').replace(/\s*\/.*$/,''));
+        ch.querySelectorAll('.set-mini').forEach(m=>{
+          const kin=m.querySelector('[name^="bkg"]'); if(!kin) return;
+          const atteso=scalaKg(base,+kin.dataset.calo||20);
+          kin.placeholder=atteso==null?'':fmtKgIt(atteso);
+          base=valoreSerie(kin.value)??atteso;
+        });
+      };
+      ch.querySelectorAll('.set-mini').forEach(m=>{
+        const k=+m.dataset.bi; set.blocchi[k]=set.blocchi[k]||{kg:'',reps:''};
+        const kin=m.querySelector('[name^="bkg"]'), rin=m.querySelector('[name^="breps"]');
+        if(kin){ kin.value=set.blocchi[k].kg||''; kin.addEventListener('input',e=>{ set.blocchi[k].kg=e.target.value.trim(); segnaposti(); afterChange(ex,st,c); }); }
+        rin.value=set.blocchi[k].reps||'';
+        rin.addEventListener('input',e=>{ set.blocchi[k].reps=e.target.value.trim(); afterChange(ex,st,c); });
+        rin.addEventListener('change',()=>{ if(set.blocchi[k].reps) avviaPausa(k+1); });
+      });
+      const mainIns=riga?.querySelectorAll('input');
+      if(mainIns){
+        mainIns[0].addEventListener('input',segnaposti);
+        mainIns[1].addEventListener('change',()=>{ if(set.reps && !set.blocchi.some(b=>b&&b.reps)) avviaPausa(0); });
+      }
+      segnaposti();
+    });
+  }
   function card(ex, idx){
     const st=exState(giornoCorr, idx, nSlot(ex)); const uni=isUnilat(ex);
     const c=document.createElement('div'); c.className='card'+(st.aperta?' open':'')+(isDone(ex,st)?' done':''); c.style.animationDelay=(idx*0.04)+'s';
@@ -2196,12 +2292,15 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
         const label=esc(slotLabel(ex,i));
         const rest=Number(prescribed?.rest_seconds);
         const workSec=ex.unita==='sec'?secondiTarget(targetReps):0;
-        sets+=`<div class="set${uni?' lato-'+LATI[(s-1)%2].toLowerCase():''}"><div class="sl">Serie ${k}${uni?'<small>'+LATI[(s-1)%2]+'</small>':''}${targetSummary?`<small class="set-prescription">${esc(targetSummary)}</small>`:''}</div><div class="field"><input type="text" inputmode="decimal" autocomplete="off" name="kg-${i}" aria-label="Peso serie ${label}" placeholder="${esc(prev[i]?.kgTxt||targetLoad)}"><span>${ex.perLato?'kg/lato':'kg'}</span></div><div class="field"><input type="text" inputmode="decimal" autocomplete="off" name="reps-${i}" aria-label="${ex.unita==='sec'?'Secondi':'Ripetizioni'} serie ${label}" placeholder="${esc(prev[i]?.repsTxt||String(targetReps).replace(/s$/i,''))}"><span>${ex.unita==='sec'?'sec':'reps'}</span></div><div class="field f-rir"><input type="number" inputmode="numeric" min="0" max="10" autocomplete="off" name="rir-${i}" aria-label="RIR serie ${label}" placeholder="${esc(prescribed?.target_rir??ex.rir??'')}"><span>RIR</span></div>${workSec>0?`<button type="button" class="tg set-work" data-work="${workSec}" data-si="${i}" data-label="${esc(ex.nome)} · Serie ${label}" data-rest="${Number.isFinite(rest)&&rest>0?rest:(recEff(ex)||0)}" aria-label="Avvia timer esercizio serie ${label}">${I.stopwatch} ${fmtT(workSec)}</button>`:''}${Number.isFinite(rest)&&rest>0?`<button type="button" class="tg tg-timer set-rest" data-sec="${rest}" data-label="Recupero serie ${label}" aria-label="Avvia recupero serie ${label}">${I.play} ${fmtT(rest)}</button>`:''}</div>`;
+        const tec=tecSerie(ex,i);
+        if(tec&&(!uni||i%2===0)) sets+=`<div class="set-tec${tecCatena(tec)?' catena':''}">${I.spark}<span>${esc(tec.testo||'')}</span></div>`;
+        sets+=`<div class="set${tec?' con-tecnica':''}${uni?' lato-'+LATI[(s-1)%2].toLowerCase():''}"><div class="sl">Serie ${k}${uni?'<small>'+LATI[(s-1)%2]+'</small>':''}${targetSummary?`<small class="set-prescription">${esc(targetSummary)}</small>`:''}</div><div class="field"><input type="text" inputmode="decimal" autocomplete="off" name="kg-${i}" aria-label="Peso serie ${label}" placeholder="${esc(prev[i]?.kgTxt||targetLoad)}"><span>${ex.perLato?'kg/lato':'kg'}</span></div><div class="field"><input type="text" inputmode="decimal" autocomplete="off" name="reps-${i}" aria-label="${ex.unita==='sec'?'Secondi':'Ripetizioni'} serie ${label}" placeholder="${esc(prev[i]?.repsTxt||String(targetReps).replace(/s$/i,''))}"><span>${ex.unita==='sec'?'sec':'reps'}</span></div><div class="field f-rir"><input type="number" inputmode="numeric" min="0" max="10" autocomplete="off" name="rir-${i}" aria-label="RIR serie ${label}" placeholder="${esc(prescribed?.target_rir??ex.rir??'')}"><span>RIR</span></div>${workSec>0?`<button type="button" class="tg set-work" data-work="${workSec}" data-si="${i}" data-label="${esc(ex.nome)} · Serie ${label}" data-rest="${Number.isFinite(rest)&&rest>0?rest:(recEff(ex)||0)}" aria-label="Avvia timer esercizio serie ${label}">${I.stopwatch} ${fmtT(workSec)}</button>`:''}${Number.isFinite(rest)&&rest>0?`<button type="button" class="tg tg-timer set-rest" data-sec="${rest}" data-label="Recupero serie ${label}" aria-label="Avvia recupero serie ${label}">${I.play} ${fmtT(rest)}</button>`:''}</div>`;
+        if(tecCatena(tec)) sets+=catenaHTML(ex,i,tec,prev[i]);
       }
       sets+=`</div><div class="set-btns"><button type="button" class="add-set-btn">+ Aggiungi serie</button>${setCount>(uni?2:1)?'<button type="button" class="del-set-btn">− Togli serie</button>':''}</div>`;
     }
     const cnote = `<label class="cnote"><span class="cnote-l">Le tue note</span><textarea class="cnote-ta" placeholder="Aggiungi una nota su questo esercizio (la vedrà il coach)…"></textarea></label>`;
-    const headSum = (ex.cardio||ex.timed) ? ex.tempo : (ex.repsSerie ? (ex.serie+' serie · var.') : (ex.serie+'×'+ex.reps+(uni&&!RX_REPS_LATO.test(ex.reps)?' per lato':'')));
+    const headSum = ((ex.cardio||ex.timed) ? ex.tempo : (ex.repsSerie ? (ex.serie+' serie · var.') : (ex.serie+'×'+ex.reps+(uni&&!RX_REPS_LATO.test(ex.reps)?' per lato':''))))+nomiTecniche(ex).map(n=>' · '+n).join('');
     const supportsProgression=hasSets&&ex.unita!=='sec';
     const sg=supportsProgression?suggSets(ex):null;
     let suggHTML='';
@@ -2238,6 +2337,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
         ${cnote}
       </div>`;
     if(hasSets){ c.querySelectorAll('.set').forEach((row,s)=>{ const ins=row.querySelectorAll('input'); ins[0].value=st.sets[s].kg??''; ins[1].value=st.sets[s].reps??''; ins[2].value=st.sets[s].rir??''; paintRir(ex,row,st.sets[s].rir); ins[0].addEventListener('input',e=>{st.sets[s].kg=e.target.value.trim(); afterChange(ex,st,c);}); ins[1].addEventListener('input',e=>{st.sets[s].reps=e.target.value.trim(); afterChange(ex,st,c);}); ins[1].addEventListener('change',()=>{ /* reps scritte e peso lasciato vuoto: vale il peso della volta scorsa (quello in grigio) */ if(st.sets[s].reps&&!st.sets[s].kg&&prev[s]?.kgTxt&&!serieACorpoLibero(ex,s)){ ins[0].value=prev[s].kgTxt; st.sets[s].kg=prev[s].kgTxt; afterChange(ex,st,c);} }); ins[2].addEventListener('input',e=>{st.sets[s].rir=e.target.value.trim(); paintRir(ex,row,st.sets[s].rir); afterChange(ex,st,c);}); }); }
+    if(hasSets) montaCatene(ex,st,c);
     const rb=c.querySelector('[data-rir-info]'); if(rb) rb.onclick=()=>{ const h=c.querySelector('.rir-hint'); if(h) h.hidden=!h.hidden; };
     const sq=c.querySelector('[data-sugg-info]'); if(sq) sq.onclick=(e)=>{ e.stopPropagation(); const h=c.querySelector('.sugg-hint'); if(h) h.hidden=!h.hidden; };
     if(sg){
@@ -2385,7 +2485,8 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   let ultimiPerGiorno = {};
   function riferimento(ex){
     const g=giorni[giornoCorr];
-    const candidates=[g&&ultimiPerGiorno[g.titolo+'|'+ex.nome],ultimiPesi[ex.nome]];
+    const key=chiaveEsercizio(ex);
+    const candidates=[g&&ultimiPerGiorno[g.titolo+'|'+key],ultimiPesi[key]];
     return candidates.find(record=>record&&record.unit!=='sec'&&(record.perLato==null||record.perLato===!!ex.perLato));
   }
   function ricalcolaUltimi(){
@@ -2394,8 +2495,9 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const sets=(e.sets||[]).filter(st=>st.reps!=null);
       if(sets.length){
         const record={sets,perSide:!!(e.uni||e.lati?.length),unit:e.unita,perLato:e.perLato};
-        ultimiPesi[e.nome]=record;
-        ultimiPerGiorno[se.titolo+'|'+e.nome]=record;
+        const key=e.ms>1?e.nome+' #'+e.ms:e.nome;
+        ultimiPesi[key]=record;
+        ultimiPerGiorno[se.titolo+'|'+key]=record;
       }
     }));
   }
@@ -2409,6 +2511,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const rows=(st.sets||[]).map((set,i)=>({value:leggiSerie(ex,set,i),i})).filter(r=>r.value);
       if(rows.length || st.manual || st.note || st.segnalato){
         const o={nome:ex.nome, exerciseId:ex.id||null, sets:rows.map(r=>({...r.value,slot:r.i})), fatto:isDone(ex,st), note:st.note||'', segnalato:st.segnalato||null, unita:ex.unita||null, perLato:!!ex.perLato};
+        if(ex.ms) o.ms=ex.ms;
         if(isUnilat(ex)){ o.uni=true; o.lati=rows.map(r=>LATI[r.i%2]); }
         out.push(o);
       }
@@ -2500,7 +2603,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       const prescription=(ex.exerciseId&&planned.find(item=>item.id===ex.exerciseId))||planned.find(item=>item.nome===ex.nome);
       const sets=(ex.sets||[]).map((set,i)=>{
         const f=fmtSerie(ex,set);
-        return `<div class="progmeta">Serie ${esc(savedSetLabel(ex.lati,set,i))} · ${esc(f.kg)} × ${esc(f.r)}${set.rir==null?'':' · RIR '+esc(set.rir)}</div>`;
+        return `<div class="progmeta">Serie ${esc(savedSetLabel(ex.lati,set,i))} · ${esc(f.kg)} × ${esc(f.r)}${set.rir==null?'':' · RIR '+esc(set.rir)}${TEC_NOMI[set.tecnica]?' · '+TEC_NOMI[set.tecnica]:''}</div>`;
       }).join('');
       return `<section class="physical-panel"><h3 class="physical-title">${esc(ex.nome)}</h3>${coachNoteHTML(prescription)}${sets||'<div class="progmeta">Nessuna serie registrata</div>'}${ex.note?`<div class="note"><span class="nl">Le tue note</span> ${esc(ex.note)}</div>`:''}</section>`;
     }).join('');
@@ -3717,6 +3820,6 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   renderView();
 </script>
 <script src="supabase-config.js"></script>
-<script type="module" src="src/athlete.mjs?v=20261113-progress-photos"></script>
+<script type="module" src="src/athlete.mjs?v=20261128-multiserie"></script>
 </body>
 </html>

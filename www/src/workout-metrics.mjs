@@ -17,7 +17,7 @@ export const DEFAULT_VOLUME_RANGES = Object.freeze({
   femorali: { min: 6, max: 16 }, glutei: { min: 6, max: 18 }, polpacci: { min: 4, max: 14 }, addome: { min: 4, max: 14 }
 });
 
-const V2_METHODS = new Set(["straight", "superset", "giant_set", "drop_set", "rest_pause", "cluster", "myo_reps", "top_back_off", "eccentric", "isometric", "circuit"]);
+const V2_METHODS = new Set(["straight", "superset", "giant_set", "multiset", "drop_set", "rest_pause", "cluster", "myo_reps", "top_back_off", "eccentric", "isometric", "circuit"]);
 const SET_TYPES = new Set(["warmup", "working", "top", "back_off", "drop", "mini_set", "cluster_group", "failure"]);
 
 function clone(value) { return structuredClone(value ?? {}); }
@@ -167,7 +167,7 @@ export function convertLegacyProgram(input = {}) {
 }
 
 const METHOD_ALIASES = Object.freeze({
-  singolo: "straight", single: "straight", esercizio_singolo: "straight", superserie: "superset", super_set: "superset",
+  singolo: "straight", single: "straight", esercizio_singolo: "straight", superserie: "superset", super_set: "superset", multiserie: "multiset", multi_set: "multiset",
   giant: "giant_set", "giant set": "giant_set", dropset: "drop_set", "drop set": "drop_set",
   "rest-pause": "rest_pause", restpause: "rest_pause", "cluster set": "cluster", clusterset: "cluster",
   myoreps: "myo_reps", "myo-reps": "myo_reps", "top set + back-off": "top_back_off", "top+backoff": "top_back_off",
@@ -299,7 +299,7 @@ export function convertImportedProgram(input = {}) {
         rawExercises.forEach((exercise, ei) => {
           const method = importedMethod(exercise.metodo || exercise.method);
           const group = toText(exercise.gruppo || exercise.group);
-          const groupedMethod = ["superset", "giant_set", "circuit"].includes(method);
+          const groupedMethod = ["superset", "giant_set", "multiset", "circuit"].includes(method);
           let key;
           if (group) { key = `group:${group}:${method}`; previousAutoGroup = ""; }
           else if (groupedMethod) {
@@ -560,7 +560,8 @@ export function toAthleteProgram(input) {
         const { legacyFields: _dayLegacyFields, trainer_note: _dayTrainerNote, blocks: _blocks, ...dayData } = day;
         const exercises = [];
         for (const block of (day.blocks || []).slice().sort((a, b) => Number(a.position || 0) - Number(b.position || 0))) {
-          const grouped = ["superset", "giant_set", "circuit"].includes(block.method) && (block.exercises || []).length > 1;
+          const grouped = ["superset", "giant_set", "multiset", "circuit"].includes(block.method) && (block.exercises || []).length > 1;
+          const ownRest = block.method === "multiset";
           for (const exercise of (block.exercises || []).slice().sort((a, b) => Number(a.position || 0) - Number(b.position || 0))) {
             const rows = (exercise.sets || []).slice().sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
             const mainIndex = Math.max(0, rows.findIndex((row) => row.set_type !== "warmup"));
@@ -570,8 +571,10 @@ export function toAthleteProgram(input) {
               id: row.id, position: row.position, set_type: row.set_type, reps_min: row.reps_min, reps_max: row.reps_max,
               reps_mode: row.reps_mode, load_value: row.load_value, load_unit: row.load_unit, load_note: row.load_note,
               target_rir: row.target_rir, tempo: row.tempo, rest_seconds: row.rest_seconds, intra_rest_seconds: row.intra_rest_seconds,
-              parent_set_id: row.parent_set_id, round: row.round, client_note: row.client_note, effort_by_feel: row.effort_by_feel === true
+              parent_set_id: row.parent_set_id, round: row.round, client_note: row.client_note, effort_by_feel: row.effort_by_feel === true,
+              ...(row.technique ? { technique: clone(row.technique) } : {})
             }));
+            const rowTechniques = rows.map((row) => row.technique && typeof row.technique === "object" ? clone(row.technique) : null);
             const uniqueReps = new Set(repRows), uniqueLoads = new Set(loadRows);
             const firstLoad = rows.map(displayLoad).find(Boolean) || "";
             const notes = [exercise.client_note, block.client_note, exercise.instructions, ...rows.map((row) => row.client_note)];
@@ -589,7 +592,7 @@ export function toAthleteProgram(input) {
               tempo: safeTempo || undefined,
               id: exercise.id, nome: exercise.name, serie: rows.length,
               reps: repRows[mainIndex] || "", repsSerie: uniqueReps.size > 1 ? repRows : undefined,
-              rec: String(["superset", "giant_set", "circuit"].includes(block.method) ? block.rest_after_seconds ?? 0 : first.rest_seconds ?? block.rest_after_seconds ?? 0),
+              rec: String(!ownRest && ["superset", "giant_set", "circuit"].includes(block.method) ? block.rest_after_seconds ?? 0 : first.rest_seconds ?? block.rest_after_seconds ?? 0),
               carico: firstLoad, carichiSerie: uniqueLoads.size > 1 ? loadRows : undefined,
               note: clientNotes.slice(0, 2000), rir: first.target_rir ?? null,
               rirTxt: first.target_rir == null ? "" : String(first.target_rir),
@@ -597,6 +600,7 @@ export function toAthleteProgram(input) {
               timed: false, ss: grouped ? block.id : undefined, blockMethod: block.method,
               ssType: grouped ? block.method : undefined,
               setTypes: rows.map((row) => row.set_type), prescriptions: athleteRows,
+              ...(rowTechniques.some(Boolean) ? { tecniche: rowTechniques } : {}),
               muscolo: (exercise.primary_muscles || []).join(", "),
               equipment: exercise.equipment || "", video_ref: exercise.video_ref || null,
               instructions: toText(exercise.instructions),
@@ -690,9 +694,9 @@ export function validateV2Program(input, { forPublish = false } = {}) {
         check(`settimane[${wi}].giorni[${di}].blocks[${bi}].method`, V2_METHODS.has(block.method), "Metodo del blocco non riconosciuto.");
         check(`settimane[${wi}].giorni[${di}].blocks[${bi}].exercises`, Array.isArray(block.exercises) && block.exercises.length <= 12, "Il blocco può contenere al massimo 12 esercizi.");
         const exercises = Array.isArray(block.exercises) ? block.exercises : [];
-        const minExercises = block.method === "superset" ? 2 : ["giant_set", "circuit"].includes(block.method) ? 3 : 1;
-        const maxExercises = ["superset", "giant_set", "circuit"].includes(block.method) ? 12 : 1;
-        check(`settimane[${wi}].giorni[${di}].blocks[${bi}].exercises.length`, exercises.length >= minExercises && exercises.length <= maxExercises, `${block.method === "superset" ? "Il superset richiede 2 esercizi" : ["giant_set", "circuit"].includes(block.method) ? "Il metodo richiede almeno 3 esercizi" : "Questo metodo ammette un solo esercizio"}.`);
+        const minExercises = ["superset", "multiset"].includes(block.method) ? 2 : ["giant_set", "circuit"].includes(block.method) ? 3 : 1;
+        const maxExercises = ["superset", "giant_set", "multiset", "circuit"].includes(block.method) ? 12 : 1;
+        check(`settimane[${wi}].giorni[${di}].blocks[${bi}].exercises.length`, exercises.length >= minExercises && exercises.length <= maxExercises, `${block.method === "superset" ? "Il superset richiede 2 esercizi" : block.method === "multiset" ? "La multiserie richiede almeno 2 righe" : ["giant_set", "circuit"].includes(block.method) ? "Il metodo richiede almeno 3 esercizi" : "Questo metodo ammette un solo esercizio"}.`);
         for (const [ei, exercise] of exercises.entries()) {
           if (!exercise || typeof exercise !== "object" || Array.isArray(exercise)) { check(`settimane[${wi}].giorni[${di}].blocks[${bi}].exercises[${ei}]`, false, "Esercizio non valido."); continue; }
           check(`settimane[${wi}].giorni[${di}].blocks[${bi}].exercises[${ei}].name`, toText(exercise.name).length <= 160, "Il nome esercizio non può superare 160 caratteri.");
