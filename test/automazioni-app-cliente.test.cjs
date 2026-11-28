@@ -68,3 +68,33 @@ test("app cliente: rispetta sezioni, data degli allenamenti e macro nascosti (an
   assert.match(nutritionPdfModel(plan).giorni[0].macro, /kcal/);
   assert.equal(nutritionPdfModel(plan, { nascondiMacro: true }).giorni[0].macro, "");
 });
+
+test("data di nascita: obbligatoria nella registrazione con invito, facoltativa altrove, almeno 10 anni", async () => {
+  const { validateClientRegistration, validateBirthDate } = await import("../supabase/functions/_shared/validation.mjs");
+  const base = { firstName: "Anna", lastName: "Rossi", email: "anna@example.com", password: "Abcdefghij12" };
+  assert.throws(() => validateClientRegistration(base, { requireBirthDate: true }), /data di nascita/);
+  assert.equal(validateClientRegistration({ ...base, birthDate: "1994-05-21" }, { requireBirthDate: true }).birthDate, "1994-05-21");
+  assert.equal(validateClientRegistration(base).birthDate, undefined);
+  const today = new Date("2026-11-28T12:00:00Z");
+  assert.throws(() => validateBirthDate("2020-01-01", { today }), /non valida/);
+  assert.throws(() => validateBirthDate("1994-02-30", { today }), /non valida/);
+  assert.equal(validateBirthDate("2016-11-28", { today }), "2016-11-28");
+  const fn = read("supabase/functions/client-invite/index.ts");
+  assert.match(fn, /requireBirthDate: true/);
+  assert.match(fn, /birth_date: input\.birthDate/);
+  assert.match(read("www/invito.html"), /name="birthDate" type="date"[^>]*required/);
+});
+
+test("data di nascita: il trigger la salva dall'invito e il cliente la imposta dal Profilo", () => {
+  const sql = read("supabase/migrations/202611280002_data_nascita_cliente.sql");
+  assert.match(sql, /private\.valid_birth_date\(new\.raw_user_meta_data ->> 'birth_date'\)/);
+  assert.match(sql, /function public\.athlete_set_birth_date\(p_date date\)[\s\S]*private\.is_active_athlete\(v_actor\)/);
+  const page = read("www/athlete.html");
+  assert.match(page, /id="pfNascita" type="date"/);
+  assert.match(page, /id="nascitaCard"/);
+  assert.match(page, /n\.id==='profilo'&&mancaNascita\(\)/);
+  const js = read("www/src/athlete.mjs");
+  assert.match(js, /rpc\("athlete_set_birth_date"/);
+  assert.match(js, /alerts\.notify\("profilo"/);
+  assert.match(read("www/src/supabase.mjs"), /birthDate: row\.birth_date/);
+});

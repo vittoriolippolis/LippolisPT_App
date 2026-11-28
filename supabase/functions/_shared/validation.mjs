@@ -7,7 +7,18 @@ export function cleanText(value, max = 120) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
-export function validateClientRegistration(input = {}) {
+// Data di nascita «AAAA-MM-GG»: dal 1900 a oggi, almeno 10 anni. Vuota → null (obbligatoria solo se richiesta).
+export function validateBirthDate(value, { required = false, today = new Date() } = {}) {
+  const text = String(value ?? "").trim();
+  if (!text) { if (required) throw new Error("Inserisci la data di nascita."); return null; }
+  const ms = /^\d{4}-\d{2}-\d{2}$/.test(text) ? Date.parse(`${text}T00:00:00.000Z`) : NaN;
+  if (!Number.isFinite(ms) || new Date(ms).toISOString().slice(0, 10) !== text) throw new Error("Data di nascita non valida.");
+  const limit = new Date(Date.UTC(today.getUTCFullYear() - 10, today.getUTCMonth(), today.getUTCDate()));
+  if (text < "1900-01-01" || ms > limit.getTime()) throw new Error("Data di nascita non valida.");
+  return text;
+}
+
+export function validateClientRegistration(input = {}, { requireBirthDate = false } = {}) {
   const firstName = cleanText(input.firstName, 60);
   const lastName = cleanText(input.lastName, 60);
   const email = cleanText(input.email, 254).toLowerCase();
@@ -16,7 +27,8 @@ export function validateClientRegistration(input = {}) {
   if (!EMAIL_RX.test(email)) throw new Error("Email non valida.");
   if (password.length < 12 || password.length > 128) throw new Error("La password deve avere tra 12 e 128 caratteri.");
   if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) throw new Error("La password deve includere maiuscola, minuscola e numero.");
-  return { firstName, lastName, email, password };
+  const birthDate = validateBirthDate(input.birthDate, { required: requireBirthDate });
+  return { firstName, lastName, email, password, ...(birthDate ? { birthDate } : {}) };
 }
 
 export function validateCreateClient(input = {}) {
