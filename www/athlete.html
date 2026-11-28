@@ -474,7 +474,7 @@
   .pd-index svg{width:19px;height:19px}
   .session-action{position:static;display:flex;align-items:center;gap:12px;margin:18px 0 0;padding:9px;border-radius:16px;background:var(--surface);border:1px solid var(--line-soft);box-shadow:var(--shadow-card)}
   .session-action .concl-btn{width:auto;flex:1;padding:12px}
-  .session-action span{font-size:11px;font-weight:600;color:var(--muted);padding:0 4px}
+  .session-action>span{font-size:11px;font-weight:600;color:var(--muted);padding:0 4px}
   .set .sl{flex:0 0 38px}.set .field,.set .field input{min-width:0}
   .set .set-rest{padding:6px;flex:0 0 auto;min-height:30px}
   .set .set-work{-webkit-appearance:none;appearance:none;font:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:6px 8px;flex:0 0 auto;min-height:30px;border:0;background:var(--accent);color:var(--on-accent);font-weight:600}
@@ -849,15 +849,77 @@
 .tg b{font-size:13px;}
 /* Altro: righe con icona piccola in colonna fissa */
 .menu{gap:8px;}
-.mcard{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line-soft); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow-card); min-height:56px;}
-.mcard .mi{flex:0 0 18px; display:grid; place-items:center; color:var(--muted);}
-.mcard .mi svg{width:18px; height:18px; stroke-width:1.5;}
-.mcard .lbl{flex:1; font-family:'Manrope',system-ui,sans-serif; font-size:15px; font-weight:500; color:var(--text);}
-.mcard .mgo{color:var(--muted2); display:grid;}
+.mcard{display:flex; align-items:center; gap:14px; background:color-mix(in srgb,var(--accent) 13%,var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line-soft)); border-radius:14px; padding:16px; min-height:68px;}
+.mcard .mi{flex:0 0 36px; width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:var(--accent); color:var(--on-accent);}
+.mcard .mi svg{width:18px; height:18px;}
+.mcard .lbl{flex:1; font-family:'Archivo',system-ui,sans-serif; font-size:17px; font-weight:600; color:var(--accent-ink);}
+.mcard .mgo{color:var(--accent-ink); display:grid;}
 .mcard .mgo svg{width:16px; height:16px;}
 .mcard:active{transform:scale(.98);}
 /* pulsanti e controlli: transizioni brevi su colore e sfondo */
 button{transition:background-color .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease), transform .15s var(--ease);}
+
+/* ===== Animazioni (28/11/2026): brevi, solo opacità e transform, una curva sola ===== */
+#view.entra{animation:vista-in .38s var(--ease);}
+#view.avanti{animation:vista-avanti .38s var(--ease);}
+#view.indietro{animation:vista-indietro .38s var(--ease);}
+@keyframes vista-in{from{opacity:0; transform:translateY(18px);}}
+@keyframes vista-avanti{from{opacity:0; transform:translateX(36px);}}
+@keyframes vista-indietro{from{opacity:0; transform:translateX(-36px);}}
+@keyframes vt-out{to{opacity:0;}}
+@keyframes vt-in{from{opacity:0; transform:translateY(8px);}}
+.card-body.apri{animation:body-in .3s var(--ease);}
+.card-body.apri>*{opacity:0; animation:riga-in .34s var(--ease) forwards;}
+.card-body.apri>*:nth-child(1){animation-delay:.04s;} .card-body.apri>*:nth-child(2){animation-delay:.09s;} .card-body.apri>*:nth-child(3){animation-delay:.14s;}
+.card-body.apri>*:nth-child(4){animation-delay:.19s;} .card-body.apri>*:nth-child(5){animation-delay:.24s;} .card-body.apri>*:nth-child(n+6){animation-delay:.28s;}
+.card.open{border-color:color-mix(in srgb,var(--accent) 45%,var(--line-soft)); transition:border-color .25s var(--ease);}
+@keyframes body-in{from{transform:translateY(-10px);}}
+.card-caret{transition:transform .18s var(--ease);}
+.chk.spunta{animation:spunta .2s var(--ease);}
+@keyframes spunta{from{transform:scale(.82);}}
+.chk svg{transition:opacity .15s var(--ease), transform .2s var(--ease);}
+/* grafici: la linea si disegna, l'area compare */
+.ch-line{stroke-dasharray:1; stroke-dashoffset:1; animation:ch-draw .7s var(--ease) .05s forwards;}
+.ch-area{opacity:0; animation:ch-fade .4s var(--ease) .35s forwards;}
+@keyframes ch-draw{to{stroke-dashoffset:0;}}
+@keyframes ch-fade{to{opacity:1;}}
+/* timer: anello che si svuota */
+.tb-ring{flex:0 0 40px; width:40px; height:40px; transform:rotate(-90deg);}
+.tb-ring circle{fill:none; stroke-width:3.5;}
+.tb-ring-bg{stroke:rgba(4,35,27,.16);}
+.tb-ring-v{stroke:currentColor; stroke-linecap:round; stroke-dasharray:1; transition:stroke-dashoffset 1s linear;}
+.timerbar.done .tb-ring-bg{stroke:rgba(255,255,255,.25);}
+.timerbar .tb-track{display:none;}
+.tb-time{font-family:var(--mono); font-weight:500; font-variant-numeric:tabular-nums;}
+.timerbar{animation:tb-in .24s var(--ease);}
+@keyframes tb-in{from{opacity:0; transform:translateY(8px);}}
+.timerbar.work{background:color-mix(in srgb,var(--accent) 82%,#000);}
+.timerbar.done{box-shadow:none;}
+/* concludi: scorri per confermare */
+.session-action{padding:8px;}
+.slide-confirm{position:relative; flex:1; width:100%; height:56px; border-radius:12px; background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line-soft)); overflow:hidden; touch-action:pan-y; user-select:none; -webkit-user-select:none;}
+.slide-confirm:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.sc-fill{position:absolute; inset:0; background:var(--accent); transform-origin:left; transform:scaleX(0); opacity:.35;}
+.sc-label{position:absolute; inset:0; display:grid; place-items:center; padding-left:52px; font-size:15px; font-weight:600; color:var(--accent-ink); pointer-events:none; transition:opacity .15s var(--ease);}
+.sc-knob{position:absolute; top:4px; left:4px; width:56px; height:46px; border-radius:8px; background:var(--accent); color:var(--on-accent); display:grid; place-items:center; cursor:grab; touch-action:none;}
+.sc-knob svg{width:18px; height:18px;}
+.slide-confirm.drag .sc-knob{cursor:grabbing;}
+.slide-confirm.drag .sc-label,.slide-confirm.ok .sc-label{opacity:.4;}
+.slide-confirm.torna .sc-knob,.slide-confirm.torna .sc-fill{transition:transform .2s var(--ease);}
+/* riepilogo finale */
+.riepilogo{position:absolute; inset:0; z-index:60; display:grid; place-items:end center; padding:16px 16px calc(96px + env(safe-area-inset-bottom,0px)); background:rgba(10,14,13,.42); animation:ch-fade .2s var(--ease) forwards; opacity:0;}
+.riepilogo.via{animation:vt-out .18s var(--ease) forwards;}
+.riep-card{width:100%; max-width:420px; background:var(--surface); border:1px solid var(--line-soft); border-radius:16px; padding:24px 20px 20px; animation:vt-in .3s var(--ease);}
+.riep-ic{width:40px; height:40px; border-radius:10px; background:var(--accent); color:var(--on-accent); display:grid; place-items:center; margin-bottom:12px;}
+.riep-ic svg{width:20px; height:20px;}
+.riep-card h2{font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:20px; color:var(--text);}
+.riep-sub{color:var(--muted); font-size:14px; margin-top:4px;}
+.riep-list{margin:16px 0 20px; border-top:1px solid var(--line-soft);}
+.riep-list>div{display:flex; justify-content:space-between; align-items:baseline; padding:12px 0; border-bottom:1px solid var(--line-soft); opacity:0; animation:riga-in .3s var(--ease) forwards;}
+@keyframes riga-in{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+.riep-list dt{color:var(--muted); font-size:14px;}
+.riep-list dd{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:16px; color:var(--text);}
+.riep-ok{width:100%; padding:14px; border-radius:12px;}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important; transition-duration:.01ms!important;}}
 </style>
 <style>.set-prescription{display:block;margin-top:3px;color:var(--muted);font-size:11px;font-weight:600;line-height:1.25;white-space:normal}</style>
@@ -1329,7 +1391,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       t.innerHTML=`${n.icon}<span>${n.label}</span>${nb?`<span class="nb">${nb}</span>`:''}`;
       t.onclick=()=>showTab(n.id); tabbarEl.appendChild(t); });
   }
-  function showTab(id){ giornoSel=null; valoriOpen=false; pesataOpen=false; pesataDraft=''; activeTab=id; altroDetail=null; altroStoricoEx=null; docAperto=null; coVista='home'; if(id==='workout'){ workoutView='list'; } view.scrollTop=0; renderView(); renderNav(); }
+  function showTab(id){ giornoSel=null; valoriOpen=false; pesataOpen=false; pesataDraft=''; activeTab=id; altroDetail=null; altroStoricoEx=null; docAperto=null; coVista='home'; if(id==='workout'){ workoutView='list'; } view.scrollTop=0; renderView(); renderNav();  animaUnaVolta(view,'entra'); }
   function renderView(){
     if(activeTab!=='altro'||altroDetail!=='Progressi fisici')updateSharedProgressPhotos=undefined;
     if(activeTab==='workout') renderWorkout();
@@ -1699,14 +1761,14 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const p=pts.slice().sort((a,b)=>a.x-b.x).map(d=>({x:X(d.x), y:Y(d.v)}));
     let grid=''; [min,(min+max)/2,max].forEach(v=>{ const y=Y(v); grid+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="var(--line-soft)"/><text x="${L-5}" y="${y+3}" text-anchor="end" font-size="9" fill="var(--muted2)" font-weight="700">${v}</text>`; });
     const dots=p.map(d=>`<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="2.4" fill="${col}"/>`).join('');
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path d="${smoothPath(p)}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>${dots}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path class="ch-line" pathLength="1" d="${smoothPath(p)}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>${dots}</svg>`;
   }
   function miniChartMulti(series, nx, min, max){
     const W=320,H=130,L=26,R=10,T=10,B=18, pw=W-L-R, ph=H-T-B;
     const X=x=>L+((x-1)/Math.max(1,nx-1))*pw, Y=v=>T+(1-(v-min)/(max-min))*ph;
     let grid=''; [min,(min+max)/2,max].forEach(v=>{ const y=Y(v); grid+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="var(--line-soft)"/><text x="${L-5}" y="${y+3}" text-anchor="end" font-size="9" fill="var(--muted2)" font-weight="700">${v}</text>`; });
     const linee=series.map(s=>{ const p=s.pts.slice().sort((a,b)=>a.x-b.x).map(d=>({x:X(d.x), y:Y(d.v)}));
-      return `<path d="${smoothPath(p)}" fill="none" stroke="${s.col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`; }).join('');
+      return `<path class="ch-line" pathLength="1" d="${smoothPath(p)}" fill="none" stroke="${s.col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`; }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}${linee}</svg>`;
   }
 
@@ -1744,13 +1806,13 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function openDay(i){
     if(senzaScheda() || !giorni[i]) return;
     workoutReturnView=workoutView==='week'?'week':'list';
-    giornoCorr=i; workoutView='detail'; view.scrollTop=0; renderWorkout();
+    giornoCorr=i; workoutView='detail'; view.scrollTop=0; renderWorkout(); animaUnaVolta(view,'avanti');
   }
   function backFromWorkout(){
     if(_saveT)saveStateNow();
     workoutView=workoutReturnView;
     view.scrollTop=0;
-    renderWorkout();
+    renderWorkout(); animaUnaVolta(view,'indietro');
   }
   function physicalMetricsHTML(){
     const bia=orderedBiaRecords()[0];
@@ -1853,9 +1915,9 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       <div class="progmeta" id="dayMeta"></div>
       <div class="progwrap"><div class="barrow"><span>Completamento</span><span><b id="doneN">0</b> / <span id="totN">6</span></span></div><div class="bar"><i id="barFill"></i></div></div>
       <div id="list"></div>
-      <div class="session-action"><span id="exerciseProgress" aria-live="polite"></span><button type="button" class="btn-accent concl-btn" id="finishWorkout">${I.check} Concludi allenamento</button></div>`;
+      <div class="session-action"><div class="slide-confirm" id="finishWorkout" role="button" tabindex="0" aria-label="Concludi allenamento: scorri verso destra o premi Invio"><span class="sc-fill"></span><span class="sc-label">Scorri per concludere</span><span class="sc-knob">${I.check}</span></div></div>`;
     document.getElementById('wback').onclick=backFromWorkout;
-    document.getElementById('finishWorkout').onclick=()=>concludiSessione(giornoCorr);
+    montaScorriConferma(document.getElementById('finishWorkout'),()=>concludiSessione(giornoCorr));
     wkRefresh();
   }
   function updateProgress(){ const tot=giorni[giornoCorr].esercizi.length, d=countDone(giornoCorr); const dn=document.getElementById('doneN'), tn=document.getElementById('totN'), bf=document.getElementById('barFill'), ep=document.getElementById('exerciseProgress'); if(dn)dn.textContent=d; if(tn)tn.textContent=tot; if(bf)bf.style.width=(tot?d/tot*100:0)+'%'; if(ep)ep.textContent=d+'/'+tot+' esercizi'; }
@@ -2125,9 +2187,9 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
       c.querySelectorAll('.sgrow').forEach(r=>{ r.onclick=(e)=>{ e.stopPropagation(); const i=+r.dataset.si; if(fillKg(i)){ markDone(r); afterChange(ex,st,c); } }; });
       const sa=c.querySelector('.sugg-apply'); if(sa) sa.onclick=(e)=>{ e.stopPropagation(); c.querySelectorAll('.sgrow').forEach(r=>{ const i=+r.dataset.si; if(fillKg(i)) markDone(r); }); afterChange(ex,st,c); sa.textContent='✓ Inseriti'; };
     }
-    c.querySelector('.chk').onclick=(e)=>{ e.stopPropagation(); st.manual=!st.manual; afterChange(ex,st,c); };
+    c.querySelector('.chk').onclick=(e)=>{ e.stopPropagation(); st.manual=!st.manual; afterChange(ex,st,c); if(isDone(ex,st)){ animaUnaVolta(c.querySelector('.chk'),'spunta'); vibra(12); } };
     c.querySelector('.flagbtn').onclick=(e)=>{ e.stopPropagation(); openSegnala(ex.nome, st); };
-    c.querySelector('.card-top').onclick=()=>{ const aperta=c.classList.toggle('open'); if(aperta) st.aperta=true; else delete st.aperta; saveState(); };
+    c.querySelector('.card-top').onclick=()=>{ const aperta=c.classList.toggle('open'); if(aperta){ st.aperta=true; animaUnaVolta(c.querySelector('.card-body'),'apri'); } else delete st.aperta; saveState(); };
     c.querySelectorAll('.tg-timer').forEach(btn=> btn.onclick=()=> startTimer(+btn.dataset.sec, btn.dataset.label));
     c.querySelectorAll('.set-work').forEach(btn=> btn.onclick=(e)=>{ e.stopPropagation(); const row=c.querySelectorAll('.set')[+btn.dataset.si]; avviaEsercizio(+btn.dataset.work, btn.dataset.label, row?.querySelectorAll('input')[1], +btn.dataset.rest); });
     const scEl=c.querySelector('.duo-stor');
@@ -2202,6 +2264,9 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   }
 
   function paintRir(ex,row,val){ const f=row.querySelector('.f-rir'); if(!f) return; f.classList.remove('ok','warn'); if(ex.rir==null||val===''||val==null) return; f.classList.add(Math.abs((+val)-ex.rir)<=1?'ok':'warn'); }
+  // Aggiunge una classe d'animazione e la toglie a fine animazione, così si ripete solo quando serve.
+  function animaUnaVolta(el,cls){ if(!el)return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); el.addEventListener('animationend',()=>el.classList.remove(cls),{once:true}); }
+  function vibra(ms){ try{ if(!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) navigator.vibrate?.(ms); }catch(e){} }
   function afterChange(ex, st, cardEl){ cardEl.classList.toggle('done', isDone(ex,st)); updateProgress(); saveState(); }
   async function openExec(ex){
     const m=document.getElementById('execModal');
@@ -2291,6 +2356,32 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     });
     return out;
   }
+  // Pulsante «scorri per confermare»: evita di concludere l'allenamento con un tocco per sbaglio. Invio/spazio confermano da tastiera.
+  function montaScorriConferma(el,onConfirm){
+    if(!el)return;
+    const knob=el.querySelector('.sc-knob'), fill=el.querySelector('.sc-fill');
+    let startX=0, dx=0, max=0, dragging=false;
+    const set=(x)=>{ dx=Math.max(0,Math.min(max,x)); knob.style.transform=`translateX(${dx}px)`; fill.style.transform=`scaleX(${max?((dx+knob.offsetWidth)/el.clientWidth):0})`; el.classList.toggle('quasi',dx>=max*0.85); };
+    const reset=()=>{ el.classList.add('torna'); set(0); setTimeout(()=>el.classList.remove('torna'),220); };
+    const conferma=()=>{ el.classList.add('ok'); vibra(20); const ok=onConfirm(); if(ok===false){ el.classList.remove('ok'); reset(); } };
+    knob.addEventListener('pointerdown',e=>{ dragging=true; startX=e.clientX-dx; max=el.clientWidth-knob.offsetWidth-8; knob.setPointerCapture?.(e.pointerId); el.classList.add('drag'); e.preventDefault(); });
+    knob.addEventListener('pointermove',e=>{ if(dragging) set(e.clientX-startX); });
+    const fine=()=>{ if(!dragging)return; dragging=false; el.classList.remove('drag'); if(dx>=max*0.85){ set(max); conferma(); } else reset(); };
+    knob.addEventListener('pointerup',fine); knob.addEventListener('pointercancel',fine);
+    el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); conferma(); } });
+  }
+  // Riepilogo mostrato dopo «Concludi allenamento».
+  function riepilogoSessione(sessione){
+    const es=sessione.esercizi||[], serie=es.reduce((n,ex)=>n+(ex.sets||[]).length,0);
+    const volume=Math.round(es.reduce((t,ex)=>t+(ex.sets||[]).reduce((a,set)=>a+(Number(set.kg)>0&&Number(set.reps)>0?Number(set.kg)*Number(set.reps):0),0),0));
+    const fatti=es.filter(ex=>(ex.sets||[]).length||ex.fatto).length;
+    const voci=[['Esercizi',String(fatti)],['Serie registrate',String(serie)],['Volume',volume?volume.toLocaleString('it-IT')+' kg':'—']];
+    const ov=document.createElement('div'); ov.className='riepilogo'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-labelledby','riepTitolo');
+    ov.innerHTML=`<div class="riep-card"><div class="riep-ic">${I.check}</div><h2 id="riepTitolo">Allenamento salvato</h2><p class="riep-sub">${esc(titoloGiorno(sessione.titolo))} · settimana ${esc(sessione.settimana)}</p><dl class="riep-list">${voci.map(([k,v],i)=>`<div style="animation-delay:${80+i*50}ms"><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><button type="button" class="btn-accent riep-ok">Chiudi</button></div>`;
+    const chiudi=()=>{ ov.classList.add('via'); setTimeout(()=>ov.remove(),180); };
+    ov.querySelector('.riep-ok').onclick=chiudi; ov.onclick=e=>{ if(e.target===ov)chiudi(); };
+    (document.querySelector('.phone')||document.body).appendChild(ov); ov.querySelector('.riep-ok').focus();
+  }
   function concludiSessione(day){
     if(giornoFatto(day)){ toastMsg('Allenamento già registrato'); return false; }
     const g=giorni[day];
@@ -2310,7 +2401,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     delete stato[day];
     saveStateNow();
     backFromWorkout();
-    toastMsg('Allenamento salvato');
+    riepilogoSessione(sessioni[sessioni.length-1]);
     return true;
   }
   function coachNoteHTML(ex){
@@ -2494,6 +2585,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     const pct = tmr.total ? Math.max(0, Math.min(100, tmr.sec/tmr.total*100)) : 0;
     bar.innerHTML=`
       <div class="tb-main">
+        <svg class="tb-ring" viewBox="0 0 40 40" aria-hidden="true"><circle class="tb-ring-bg" cx="20" cy="20" r="17"/><circle class="tb-ring-v" cx="20" cy="20" r="17" pathLength="1" style="stroke-dashoffset:${tmr.total?(1-pct/100).toFixed(4):1}"/></svg>
         <div class="tb-info"><div class="tb-label">${tmr.finished?'Tempo scaduto':tmr.label}</div><div class="tb-time">${fmtT(tmr.sec)}${tmr.finished?' · fine!':''}</div></div>
         <div class="tb-ctrls">
           ${tmr.finished?'':`<button class="tb-b" id="tbMinus" aria-label="Togli 15 secondi">−15s</button><button class="tb-b" id="tbPlus" aria-label="Aggiungi 15 secondi">+15s</button>`}
@@ -2597,7 +2689,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
   function renderAltro(){
     view.innerHTML=`<div class="pagetitle">Altro</div><div class="menu" id="menu"></div>`;
     const m=document.getElementById('menu');
-    ALTRO.forEach(it=>{ const c=document.createElement('div'); c.className='mcard'; c.innerHTML=`<span class="mi">${it.icon}</span><span class="lbl">${it.t}</span><span class="mgo">${I.chevR}</span>`; c.onclick=()=>{ altroDetail=it.t; altroStoricoEx=null; view.scrollTop=0; renderView(); }; m.appendChild(c); });
+    ALTRO.forEach(it=>{ const c=document.createElement('div'); c.className='mcard'; c.innerHTML=`<span class="mi">${it.icon}</span><span class="lbl">${it.t}</span><span class="mgo">${I.chevR}</span>`; c.onclick=()=>{ altroDetail=it.t; altroStoricoEx=null; view.scrollTop=0; renderView(); animaUnaVolta(view,'avanti'); }; m.appendChild(c); });
   }
   function renderDetail(title){
     const section={Questionari:'questionnaires',Agenda:'agenda',Abbonamenti:'subscriptions'}[title];
@@ -3000,7 +3092,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     let xl=''; const step=Math.max(1, Math.ceil(arr.length/5));
     arr.forEach((d,i)=>{ if(i%step!==0 && i!==arr.length-1) return; xl+=`<text x="${X(d.ts).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted2)" font-weight="700">${fmtData(d.ts)}</text>`; });
     const last=pts[pts.length-1];
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path d="${area}" fill="rgba(var(--accent-rgb),.13)"/>${raw}<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.6"/>${xl}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path class="ch-area" d="${area}" fill="rgba(var(--accent-rgb),.13)"/>${raw}<path class="ch-line" pathLength="1" d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.6"/>${xl}</svg>`;
   }
 
   function smoothPath(pts){
@@ -3028,7 +3120,7 @@ button{transition:background-color .15s var(--ease), border-color .15s var(--eas
     let xl=''; const step=data.length>6?2:1;
     data.forEach((d,i)=>{ if(i%step!==0 && i!==data.length-1) return; xl+=`<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted2)" font-weight="700">${d.l}</text>`; });
     const dots=pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path d="${area}" fill="rgba(var(--accent-rgb),.13)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xl}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}<path class="ch-area" d="${area}" fill="rgba(var(--accent-rgb),.13)"/><path class="ch-line" pathLength="1" d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xl}</svg>`;
   }
 
   // ====== PLICHE (massa grassa) ======
